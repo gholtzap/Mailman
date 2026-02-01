@@ -43,6 +43,12 @@ async function initializeDatabase() {
     );
     console.log("Created indexes for processing_jobs collection");
 
+    const recurringSchedulesCollection = db.collection("recurring_schedules");
+    await recurringSchedulesCollection.createIndex({ userId: 1, name: 1 }, { unique: true });
+    await recurringSchedulesCollection.createIndex({ status: 1, nextRunAt: 1 });
+    await recurringSchedulesCollection.createIndex({ userId: 1, status: 1 });
+    console.log("Created indexes for recurring_schedules collection");
+
     console.log("Database initialization complete");
   } catch (error) {
     console.error("Error initializing database:", error);

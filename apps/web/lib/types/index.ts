@@ -73,3 +73,19 @@ export interface ProcessingJob {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface RecurringSchedule {
+  _id?: ObjectId;
+  userId: ObjectId;
+  name: string;
+  categories: string[];
+  papersPerCategory: number;
+  intervalDays: number;
+  status: "active" | "paused";
+  nextRunAt: Date;
+  lastRunAt?: Date;
+  lastRunJobId?: ObjectId;
+  runCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
