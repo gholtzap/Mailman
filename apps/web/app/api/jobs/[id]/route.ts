@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
   if (!userId) {
@@ -19,8 +19,9 @@ export async function DELETE(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const { id } = await params;
   const jobs = await getProcessingJobsCollection();
-  const job = await jobs.findOne({ _id: new ObjectId(params.id) });
+  const job = await jobs.findOne({ _id: new ObjectId(id) });
 
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
@@ -37,7 +38,7 @@ export async function DELETE(
     );
   }
 
-  await jobs.deleteOne({ _id: new ObjectId(params.id) });
+  await jobs.deleteOne({ _id: new ObjectId(id) });
 
   return NextResponse.json({ success: true });
 }
