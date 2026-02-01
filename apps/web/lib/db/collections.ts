@@ -26,14 +26,15 @@ export async function getPapersCollection(): Promise<Collection<Paper>> {
 export async function getProcessedPapersCollection(): Promise<Collection<ProcessedPaper>> {
   const db = await getDatabase();
   const collection = db.collection<ProcessedPaper>("processed_papers");
-  
+
+  await collection.createIndex({ userId: 1, paperId: 1 }, { unique: true });
   await collection.createIndex({ userId: 1 });
   await collection.createIndex({ paperId: 1 });
   await collection.createIndex({ arxivId: 1 });
   await collection.createIndex({ status: 1 });
   await collection.createIndex({ createdAt: -1 });
   await collection.createIndex({ userId: 1, createdAt: -1 });
-  
+
   return collection;
 }
 

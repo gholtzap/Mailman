@@ -48,42 +48,12 @@ export async function POST(request: Request) {
     }
     console.log('[Processing API] Paper found:', paper.arxivId);
 
-    console.log('[Processing API] Checking for existing processed paper...');
     const processedPapers = await getProcessedPapersCollection();
-    const existing = await processedPapers.findOne({
-      userId: user._id,
-      paperId: paper._id,
-    });
-
-    if (existing) {
-      if (existing.status === 'completed') {
-        console.log('[Processing API] Paper already completed, returning existing');
-        return NextResponse.json({ processedPaper: existing });
-      } else if (existing.status === 'processing') {
-        console.log('[Processing API] Paper is currently processing, returning existing');
-        return NextResponse.json({ processedPaper: existing });
-      } else {
-        console.log('[Processing API] Paper exists but is failed/pending, will reprocess. Updating status to pending...');
-        await processedPapers.updateOne(
-          { _id: existing._id },
-          {
-            $set: {
-              status: 'pending',
-              updatedAt: new Date(),
-              error: undefined
-            }
-          }
-        );
-      }
-    }
-
     let processedPaperId: string;
+    let existing: any = null;
 
-    if (existing && existing.status !== 'completed' && existing.status !== 'processing') {
-      console.log('[Processing API] Reusing existing processed paper record:', existing._id);
-      processedPaperId = existing._id.toString();
-    } else {
-      console.log('[Processing API] Creating processed paper record...');
+    try {
+      console.log('[Processing API] Attempting to create processed paper record...');
       const processedPaper = await processedPapers.insertOne({
         userId: user._id!,
         paperId: paper._id!,
@@ -94,6 +64,41 @@ export async function POST(request: Request) {
       });
       console.log('[Processing API] Processed paper created:', processedPaper.insertedId);
       processedPaperId = processedPaper.insertedId.toString();
+    } catch (error: any) {
+      if (error.code === 11000) {
+        console.log('[Processing API] Processed paper already exists, fetching existing record...');
+        existing = await processedPapers.findOne({
+          userId: user._id,
+          paperId: paper._id,
+        });
+
+        if (!existing) {
+          throw new Error('Duplicate key error but record not found');
+        }
+
+        if (existing.status === 'completed') {
+          console.log('[Processing API] Paper already completed, returning existing');
+          return NextResponse.json({ processedPaper: existing });
+        } else if (existing.status === 'processing') {
+          console.log('[Processing API] Paper is currently processing, returning existing');
+          return NextResponse.json({ processedPaper: existing });
+        } else {
+          console.log('[Processing API] Paper exists but is failed/pending, will reprocess. Updating status to pending...');
+          await processedPapers.updateOne(
+            { _id: existing._id },
+            {
+              $set: {
+                status: 'pending',
+                updatedAt: new Date(),
+                error: undefined
+              }
+            }
+          );
+          processedPaperId = existing._id.toString();
+        }
+      } else {
+        throw error;
+      }
     }
 
     console.log('[Processing API] Creating job record...');
