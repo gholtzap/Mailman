@@ -3,9 +3,13 @@ import { NextResponse } from "next/server";
 import { getUsersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { ObjectId } from "mongodb";
 
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   const { userId } = await auth();
   if (!userId) {
