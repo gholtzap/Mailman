@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 export function Sidebar() {
@@ -15,7 +16,14 @@ export function Sidebar() {
       flexDirection: 'column',
       padding: '16px 0'
     }}>
-      <div style={{ padding: '0 16px', marginBottom: '24px' }}>
+      <div style={{ padding: '0 16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <Image
+          src="/mailman-logo.png"
+          alt="Mailman"
+          width={24}
+          height={24}
+          priority
+        />
         <h1 style={{
           fontSize: '13px',
           fontWeight: 600,

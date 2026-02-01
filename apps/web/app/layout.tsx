@@ -16,6 +16,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Mailman",
   description: "Process and summarize arXiv papers with Claude AI",
+  icons: {
+    icon: [
+      { url: '/mailman-logo.png' },
+      { url: '/favicon.png' },
+    ],
+  },
 };
 
 export default function RootLayout({

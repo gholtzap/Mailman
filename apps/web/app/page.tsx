@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
@@ -19,11 +20,20 @@ export default async function Home() {
           maxWidth: '1200px'
         }}
       >
-        <div
-          className="text-xl font-semibold tracking-tight"
-          style={{ color: 'var(--text-primary)' }}
-        >
-          Mailman
+        <div className="flex items-center gap-3">
+          <Image
+            src="/mailman-logo.png"
+            alt="Mailman"
+            width={32}
+            height={32}
+            priority
+          />
+          <div
+            className="text-xl font-semibold tracking-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            Mailman
+          </div>
         </div>
         <div className="flex gap-3 items-center">
           <SignedOut>
