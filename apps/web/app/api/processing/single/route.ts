@@ -50,8 +50,6 @@ export async function POST(request: Request) {
     console.log('[Processing API] Paper found:', paper.arxivId);
 
     const processedPapers = await getProcessedPapersCollection();
-    let processedPaperId: string;
-    let jobId: ObjectId;
 
     console.log('[Processing API] Checking for existing processed paper...');
     const existing = await processedPapers.findOne({
@@ -72,6 +70,9 @@ export async function POST(request: Request) {
 
     const client = await getClient();
     const session = client.startSession();
+
+    let processedPaperId!: string;
+    let jobId!: ObjectId;
 
     try {
       await session.withTransaction(async () => {
