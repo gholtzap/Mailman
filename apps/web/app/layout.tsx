@@ -1,17 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Mailman",
@@ -45,7 +34,7 @@ export default function RootLayout({
           colorSuccess: '#10b981',
           colorWarning: '#f59e0b',
           borderRadius: '6px',
-          fontFamily: 'var(--font-geist-sans)',
+          fontFamily: '"SUSE Mono", monospace',
           fontSize: '14px',
         },
         elements: {
@@ -69,9 +58,12 @@ export default function RootLayout({
       }}
     >
       <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link href="https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&family=SUSE+Mono:ital,wght@0,100..800;1,100..800&family=Zain:ital,wght@0,200;0,300;0,400;0,700;0,800;0,900;1,300;1,400&display=swap" rel="stylesheet" />
+        </head>
+        <body className="antialiased">
           {children}
         </body>
       </html>
