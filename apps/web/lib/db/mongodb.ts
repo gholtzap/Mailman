@@ -30,4 +30,8 @@ export async function getDatabase(): Promise<Db> {
   return client.db("paper-reader");
 }
 
+export async function getClient(): Promise<MongoClient> {
+  return await clientPromise;
+}
+
 export default clientPromise;

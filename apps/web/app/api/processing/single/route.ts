@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getUsersCollection, getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { paperProcessingQueue } from "@/lib/queue";
+import { getClient } from "@/lib/db/mongodb";
 
 export async function POST(request: Request) {
   try {
@@ -50,40 +51,34 @@ export async function POST(request: Request) {
 
     const processedPapers = await getProcessedPapersCollection();
     let processedPaperId: string;
-    let existing: any = null;
+    let jobId: ObjectId;
+
+    console.log('[Processing API] Checking for existing processed paper...');
+    const existing = await processedPapers.findOne({
+      userId: user._id,
+      paperId: paper._id,
+    });
+
+    if (existing) {
+      if (existing.status === 'completed') {
+        console.log('[Processing API] Paper already completed, returning existing');
+        return NextResponse.json({ processedPaper: existing });
+      } else if (existing.status === 'processing') {
+        console.log('[Processing API] Paper is currently processing, returning existing');
+        return NextResponse.json({ processedPaper: existing });
+      }
+      console.log('[Processing API] Paper exists but is failed/pending, will reprocess');
+    }
+
+    const client = await getClient();
+    const session = client.startSession();
 
     try {
-      console.log('[Processing API] Attempting to create processed paper record...');
-      const processedPaper = await processedPapers.insertOne({
-        userId: user._id!,
-        paperId: paper._id!,
-        arxivId: paper.arxivId,
-        status: "pending",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      console.log('[Processing API] Processed paper created:', processedPaper.insertedId);
-      processedPaperId = processedPaper.insertedId.toString();
-    } catch (error: any) {
-      if (error.code === 11000) {
-        console.log('[Processing API] Processed paper already exists, fetching existing record...');
-        existing = await processedPapers.findOne({
-          userId: user._id,
-          paperId: paper._id,
-        });
+      await session.withTransaction(async () => {
+        const jobs = await getProcessingJobsCollection();
 
-        if (!existing) {
-          throw new Error('Duplicate key error but record not found');
-        }
-
-        if (existing.status === 'completed') {
-          console.log('[Processing API] Paper already completed, returning existing');
-          return NextResponse.json({ processedPaper: existing });
-        } else if (existing.status === 'processing') {
-          console.log('[Processing API] Paper is currently processing, returning existing');
-          return NextResponse.json({ processedPaper: existing });
-        } else {
-          console.log('[Processing API] Paper exists but is failed/pending, will reprocess. Updating status to pending...');
+        if (existing) {
+          console.log('[Processing API] Updating existing processed paper to pending...');
           await processedPapers.updateOne(
             { _id: existing._id },
             {
@@ -92,32 +87,45 @@ export async function POST(request: Request) {
                 updatedAt: new Date(),
                 error: undefined
               }
-            }
+            },
+            { session }
           );
           processedPaperId = existing._id.toString();
+        } else {
+          console.log('[Processing API] Creating new processed paper record...');
+          const processedPaper = await processedPapers.insertOne({
+            userId: user._id!,
+            paperId: paper._id!,
+            arxivId: paper.arxivId,
+            status: "pending",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }, { session });
+          console.log('[Processing API] Processed paper created:', processedPaper.insertedId);
+          processedPaperId = processedPaper.insertedId.toString();
         }
-      } else {
-        throw error;
-      }
-    }
 
-    console.log('[Processing API] Creating job record...');
-    const jobs = await getProcessingJobsCollection();
-    const job = await jobs.insertOne({
-      userId: user._id!,
-      type: "single_paper",
-      status: "queued",
-      input: {
-        arxivUrl: `https://arxiv.org/abs/${paper.arxivId}`,
-      },
-      progress: {
-        total: 1,
-        completed: 0,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    console.log('[Processing API] Job created:', job.insertedId);
+        console.log('[Processing API] Creating job record...');
+        const job = await jobs.insertOne({
+          userId: user._id!,
+          type: "single_paper",
+          status: "queued",
+          input: {
+            arxivUrl: `https://arxiv.org/abs/${paper.arxivId}`,
+          },
+          progress: {
+            total: 1,
+            completed: 0,
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }, { session });
+        console.log('[Processing API] Job created:', job.insertedId);
+        jobId = job.insertedId;
+      });
+    } finally {
+      await session.endSession();
+    }
 
     console.log('[Processing API] Adding job to queue...');
     await paperProcessingQueue.add("process-single-paper", {
@@ -125,12 +133,12 @@ export async function POST(request: Request) {
       paperId: paperId,
       arxivId: paper.arxivId,
       encryptedApiKey: user.apiKey,
-      jobId: job.insertedId.toString(),
+      jobId: jobId.toString(),
       processedPaperId: processedPaperId,
     });
     console.log('[Processing API] Job added to queue successfully');
 
-    return NextResponse.json({ success: true, jobId: job.insertedId });
+    return NextResponse.json({ success: true, jobId: jobId });
   } catch (error) {
     console.error('[Processing API] ERROR:', error);
     return NextResponse.json({
