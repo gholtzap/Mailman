@@ -21,7 +21,7 @@ export function Sidebar() {
           fontWeight: 600,
           letterSpacing: '-0.01em',
           color: 'var(--text-primary)'
-        }}>Paper Reader</h1>
+        }}>Mailman</h1>
       </div>
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 8px' }}>
