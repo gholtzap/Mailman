@@ -88,9 +88,18 @@ export async function POST(request: Request) {
     }
 
     const metadata = await fetchArxivMetadata(arxivId);
-    await papers.insertOne(metadata);
+    const result = await papers.updateOne(
+      { arxivId },
+      { $setOnInsert: metadata },
+      { upsert: true }
+    );
 
-    return NextResponse.json({ paper: metadata });
+    if (result.upsertedId) {
+      return NextResponse.json({ paper: { _id: result.upsertedId, ...metadata } });
+    }
+
+    const finalPaper = await papers.findOne({ arxivId });
+    return NextResponse.json({ paper: finalPaper });
   } catch (error) {
     console.error('[Papers Fetch API] ERROR:', error);
     return NextResponse.json({
