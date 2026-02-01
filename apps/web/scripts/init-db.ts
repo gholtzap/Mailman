@@ -26,8 +26,6 @@ async function initializeDatabase() {
 
     const processedPapersCollection = db.collection("processed_papers");
     await processedPapersCollection.createIndex({ userId: 1, paperId: 1 }, { unique: true });
-    await processedPapersCollection.createIndex({ userId: 1 });
-    await processedPapersCollection.createIndex({ paperId: 1 });
     await processedPapersCollection.createIndex({ arxivId: 1 });
     await processedPapersCollection.createIndex({ status: 1 });
     await processedPapersCollection.createIndex({ createdAt: -1 });
@@ -39,6 +37,10 @@ async function initializeDatabase() {
     await processingJobsCollection.createIndex({ status: 1 });
     await processingJobsCollection.createIndex({ createdAt: -1 });
     await processingJobsCollection.createIndex({ userId: 1, createdAt: -1 });
+    await processingJobsCollection.createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: 30 * 24 * 60 * 60 }
+    );
     console.log("Created indexes for processing_jobs collection");
 
     console.log("Database initialization complete");
