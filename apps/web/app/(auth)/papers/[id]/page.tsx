@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ProcessedPaper {
   _id: string;
@@ -194,29 +196,59 @@ export default function PaperDetailPage() {
             padding: '20px'
           }}>
             {activeTab === "summary" && (
-              <pre style={{
-                whiteSpace: 'pre-wrap',
+              <div className="markdown-content" style={{
                 fontFamily: 'var(--font-geist-sans)',
                 fontSize: '14px',
-                lineHeight: '1.6',
-                color: 'var(--text-primary)',
-                margin: 0
+                lineHeight: '1.7',
+                color: 'var(--text-primary)'
               }}>
-                {processedPaper.humanizedContent}
-              </pre>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({node, ...props}) => <h1 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '16px', paddingBottom: '12px', borderBottom: '0.5px solid var(--border-primary)' }} {...props} />,
+                    h2: ({node, ...props}) => <h2 style={{ fontSize: '18px', fontWeight: 600, marginTop: '24px', marginBottom: '12px' }} {...props} />,
+                    h3: ({node, ...props}) => <h3 style={{ fontSize: '16px', fontWeight: 600, marginTop: '20px', marginBottom: '10px' }} {...props} />,
+                    p: ({node, ...props}) => <p style={{ marginBottom: '12px' }} {...props} />,
+                    ul: ({node, ...props}) => <ul style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+                    ol: ({node, ...props}) => <ol style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+                    li: ({node, ...props}) => <li style={{ margin: '6px 0' }} {...props} />,
+                    code: ({node, inline, ...props}: any) => inline
+                      ? <code style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '13px', background: 'var(--bg-tertiary)', border: '0.5px solid var(--border-primary)', padding: '2px 6px', borderRadius: '3px' }} {...props} />
+                      : <code style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '13px' }} {...props} />,
+                    pre: ({node, ...props}) => <pre style={{ background: 'var(--bg-tertiary)', border: '0.5px solid var(--border-primary)', borderRadius: '6px', padding: '12px', marginBottom: '12px', overflowX: 'auto' }} {...props} />,
+                  }}
+                >
+                  {processedPaper.humanizedContent || ''}
+                </ReactMarkdown>
+              </div>
             )}
 
             {activeTab === "technical" && (
-              <pre style={{
-                whiteSpace: 'pre-wrap',
+              <div className="markdown-content" style={{
                 fontFamily: 'var(--font-geist-sans)',
                 fontSize: '14px',
-                lineHeight: '1.6',
-                color: 'var(--text-primary)',
-                margin: 0
+                lineHeight: '1.7',
+                color: 'var(--text-primary)'
               }}>
-                {processedPaper.generatedContent}
-              </pre>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({node, ...props}) => <h1 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '16px', paddingBottom: '12px', borderBottom: '0.5px solid var(--border-primary)' }} {...props} />,
+                    h2: ({node, ...props}) => <h2 style={{ fontSize: '18px', fontWeight: 600, marginTop: '24px', marginBottom: '12px' }} {...props} />,
+                    h3: ({node, ...props}) => <h3 style={{ fontSize: '16px', fontWeight: 600, marginTop: '20px', marginBottom: '10px' }} {...props} />,
+                    p: ({node, ...props}) => <p style={{ marginBottom: '12px' }} {...props} />,
+                    ul: ({node, ...props}) => <ul style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+                    ol: ({node, ...props}) => <ol style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+                    li: ({node, ...props}) => <li style={{ margin: '6px 0' }} {...props} />,
+                    code: ({node, inline, ...props}: any) => inline
+                      ? <code style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '13px', background: 'var(--bg-tertiary)', border: '0.5px solid var(--border-primary)', padding: '2px 6px', borderRadius: '3px' }} {...props} />
+                      : <code style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '13px' }} {...props} />,
+                    pre: ({node, ...props}) => <pre style={{ background: 'var(--bg-tertiary)', border: '0.5px solid var(--border-primary)', borderRadius: '6px', padding: '12px', marginBottom: '12px', overflowX: 'auto' }} {...props} />,
+                  }}
+                >
+                  {processedPaper.generatedContent || ''}
+                </ReactMarkdown>
+              </div>
             )}
 
             {activeTab === "abstract" && (
