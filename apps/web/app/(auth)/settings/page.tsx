@@ -230,7 +230,13 @@ export default function SettingsPage() {
               <input
                 type="number"
                 value={maxPagesPerPaper}
-                onChange={(e) => setMaxPagesPerPaper(Number(e.target.value))}
+                onChange={(e) => {
+                  let value = e.target.value;
+                  if (value.length > 1 && value.startsWith('0')) {
+                    value = value.replace(/^0+/, '');
+                  }
+                  setMaxPagesPerPaper(Number(value) || 0);
+                }}
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -255,7 +261,13 @@ export default function SettingsPage() {
               <input
                 type="number"
                 value={papersPerCategory}
-                onChange={(e) => setPapersPerCategory(Number(e.target.value))}
+                onChange={(e) => {
+                  let value = e.target.value;
+                  if (value.length > 1 && value.startsWith('0')) {
+                    value = value.replace(/^0+/, '');
+                  }
+                  setPapersPerCategory(Number(value) || 0);
+                }}
                 style={{
                   width: '100%',
                   padding: '8px 12px',

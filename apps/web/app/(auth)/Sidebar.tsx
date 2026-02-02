@@ -11,31 +11,33 @@ export function Sidebar() {
 
   return (
     <>
-      <button
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        style={{
-          position: 'fixed',
-          top: '16px',
-          left: '16px',
-          zIndex: 50,
-          padding: '8px',
-          background: 'var(--bg-secondary)',
-          border: '0.5px solid var(--border-primary)',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '36px',
-          height: '36px'
-        }}
-        className="md:hidden"
-        aria-label="Toggle menu"
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--text-primary)' }}>
-          <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      </button>
+      {!mobileMenuOpen && (
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '16px',
+            zIndex: 50,
+            padding: '8px',
+            background: 'var(--bg-secondary)',
+            border: '0.5px solid var(--border-primary)',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '36px',
+            height: '36px'
+          }}
+          className="md:hidden"
+          aria-label="Toggle menu"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--text-primary)' }}>
+            <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
 
       {mobileMenuOpen && (
         <div
@@ -50,21 +52,18 @@ export function Sidebar() {
         />
       )}
 
-      <aside style={{
-        width: '200px',
-        background: 'var(--bg-secondary)',
-        borderRight: '0.5px solid var(--border-primary)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '16px 0',
-        position: 'fixed',
-        top: 0,
-        left: mobileMenuOpen ? 0 : '-200px',
-        height: '100vh',
-        zIndex: 50,
-        transition: 'left 200ms cubic-bezier(0.25, 1, 0.5, 1)'
-      }}
-      className="md:relative md:left-0"
+      <aside
+        className="fixed md:relative top-0 md:top-auto h-screen md:h-auto z-50 md:z-auto md:left-0"
+        style={{
+          width: '200px',
+          background: 'var(--bg-secondary)',
+          borderRight: '0.5px solid var(--border-primary)',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '16px 0',
+          left: mobileMenuOpen ? 0 : '-200px',
+          transition: 'left 200ms cubic-bezier(0.25, 1, 0.5, 1)'
+        }}
       >
         <div style={{ padding: '0 16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Image
