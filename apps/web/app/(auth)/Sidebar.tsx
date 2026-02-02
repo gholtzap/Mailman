@@ -86,6 +86,7 @@ export function Sidebar() {
           <NavLink href="/papers" active={pathname === '/papers'} onClick={() => setMobileMenuOpen(false)}>Papers</NavLink>
           <NavLink href="/papers/new" active={pathname === '/papers/new'} onClick={() => setMobileMenuOpen(false)}>New Paper</NavLink>
           <NavLink href="/batch" active={pathname === '/batch'} onClick={() => setMobileMenuOpen(false)}>Batch Process</NavLink>
+          <NavLink href="/schedules" active={pathname === '/schedules'} onClick={() => setMobileMenuOpen(false)}>Schedules</NavLink>
           <div style={{ marginTop: 'auto' }}>
             <NavLink href="/settings" active={pathname === '/settings'} onClick={() => setMobileMenuOpen(false)}>Settings</NavLink>
           </div>
