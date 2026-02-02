@@ -81,6 +81,7 @@ export interface RecurringSchedule {
   categories: string[];
   papersPerCategory: number;
   intervalDays: number;
+  email?: string;
   status: "active" | "paused";
   nextRunAt: Date;
   lastRunAt?: Date;

@@ -60,7 +60,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, categories, papersPerCategory, intervalDays, status } = body;
+    const { name, categories, papersPerCategory, intervalDays, status, email } = body;
 
     const updateFields: any = {
       updatedAt: new Date(),
@@ -86,6 +86,15 @@ export async function PUT(
         );
       }
       updateFields.status = status;
+    }
+    if (email !== undefined) {
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return NextResponse.json(
+          { error: "Invalid email format" },
+          { status: 400 }
+        );
+      }
+      updateFields.email = email || null;
     }
 
     const schedules = await getRecurringSchedulesCollection();

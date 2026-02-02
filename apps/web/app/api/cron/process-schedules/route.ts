@@ -76,6 +76,8 @@ export async function GET(request: Request) {
           papersPerCategory: schedule.papersPerCategory,
           maxPagesPerPaper: user.settings.maxPagesPerPaper,
           encryptedApiKey: user.apiKey,
+          scheduleId: schedule._id.toString(),
+          notificationEmail: schedule.email,
         });
 
         console.log(`[Cron] Queued job ${job.insertedId} for schedule ${schedule._id}`);

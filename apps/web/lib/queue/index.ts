@@ -36,6 +36,7 @@ export interface SinglePaperJobData {
 
 export interface BatchScrapeJobData {
   userId: string;
+  jobId?: string;
   categories: string[];
   papersPerCategory: number;
   maxPagesPerPaper: number;
@@ -44,4 +45,6 @@ export interface BatchScrapeJobData {
     iv: string;
     authTag: string;
   };
+  scheduleId?: string;
+  notificationEmail?: string;
 }

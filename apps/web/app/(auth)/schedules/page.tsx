@@ -127,6 +127,7 @@ export default function SchedulesPage() {
   const [formCategories, setFormCategories] = useState<string[]>([]);
   const [formPapersPerCategory, setFormPapersPerCategory] = useState(5);
   const [formIntervalDays, setFormIntervalDays] = useState(1);
+  const [formEmail, setFormEmail] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
@@ -163,6 +164,7 @@ export default function SchedulesPage() {
           categories: formCategories,
           papersPerCategory: formPapersPerCategory,
           intervalDays: formIntervalDays,
+          email: formEmail.trim() || undefined,
         }),
       });
 
@@ -172,6 +174,7 @@ export default function SchedulesPage() {
         setFormCategories([]);
         setFormPapersPerCategory(5);
         setFormIntervalDays(1);
+        setFormEmail("");
         await fetchSchedules();
       } else {
         const error = await res.json();
@@ -190,6 +193,7 @@ export default function SchedulesPage() {
     setFormCategories(schedule.categories);
     setFormPapersPerCategory(schedule.papersPerCategory);
     setFormIntervalDays(schedule.intervalDays);
+    setFormEmail(schedule.email || "");
   };
 
   const handleUpdate = async () => {
@@ -210,6 +214,7 @@ export default function SchedulesPage() {
           categories: formCategories,
           papersPerCategory: formPapersPerCategory,
           intervalDays: formIntervalDays,
+          email: formEmail.trim() || undefined,
         }),
       });
 
@@ -220,6 +225,7 @@ export default function SchedulesPage() {
         setFormCategories([]);
         setFormPapersPerCategory(5);
         setFormIntervalDays(1);
+        setFormEmail("");
         await fetchSchedules();
       } else {
         const error = await res.json();
@@ -238,6 +244,7 @@ export default function SchedulesPage() {
     setFormCategories([]);
     setFormPapersPerCategory(5);
     setFormIntervalDays(1);
+    setFormEmail("");
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -504,6 +511,33 @@ export default function SchedulesPage() {
 
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                Email for Summaries (optional)
+              </label>
+              <input
+                type="email"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                placeholder="you@example.com"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: 'var(--bg-primary)',
+                  border: '0.5px solid var(--border-primary)',
+                  borderRadius: '4px',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+              />
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                Summaries will be sent to this email when processing completes
+              </p>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
                 Interval
               </label>
               <select
@@ -631,6 +665,7 @@ export default function SchedulesPage() {
                   <tr style={{ borderBottom: '0.5px solid var(--border-primary)' }}>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Name</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Categories</th>
+                    <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Email</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Interval</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Status</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Next Run</th>
@@ -644,6 +679,9 @@ export default function SchedulesPage() {
                       <td style={{ padding: '12px 8px', color: 'var(--text-primary)' }}>{schedule.name}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontFamily: 'var(--font-geist-mono)', fontSize: '12px' }}>
                         {schedule.categories.join(", ")}
+                      </td>
+                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                        {schedule.email || <span style={{ fontStyle: 'italic', color: 'var(--text-tertiary)' }}>None</span>}
                       </td>
                       <td style={{ padding: '12px 8px', color: 'var(--text-secondary)' }}>{getIntervalLabel(schedule.intervalDays)}</td>
                       <td style={{ padding: '12px 8px' }}>

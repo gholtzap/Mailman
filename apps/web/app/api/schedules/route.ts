@@ -41,11 +41,18 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, categories, papersPerCategory, intervalDays } = body;
+    const { name, categories, papersPerCategory, intervalDays, email } = body;
 
     if (!name || !categories || categories.length === 0 || !papersPerCategory || !intervalDays) {
       return NextResponse.json(
         { error: "Missing required fields: name, categories, papersPerCategory, intervalDays" },
+        { status: 400 }
+      );
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
         { status: 400 }
       );
     }
@@ -67,7 +74,7 @@ export async function POST(request: Request) {
     const schedules = await getRecurringSchedulesCollection();
 
     const now = new Date();
-    const schedule = await schedules.insertOne({
+    const scheduleData: any = {
       userId: user._id!,
       name,
       categories,
@@ -78,7 +85,13 @@ export async function POST(request: Request) {
       runCount: 0,
       createdAt: now,
       updatedAt: now,
-    });
+    };
+
+    if (email) {
+      scheduleData.email = email;
+    }
+
+    const schedule = await schedules.insertOne(scheduleData);
 
     const createdSchedule = await schedules.findOne({ _id: schedule.insertedId });
 
