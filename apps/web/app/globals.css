@@ -206,6 +206,10 @@ input, textarea, select, button {
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-secondary-btn:hover {
@@ -224,6 +228,10 @@ input, textarea, select, button {
   transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1);
   cursor: pointer;
   border: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-primary-btn:hover {
@@ -240,10 +248,36 @@ input, textarea, select, button {
   transition: background 150ms cubic-bezier(0.25, 1, 0.5, 1);
   cursor: pointer;
   border: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero-cta-btn:hover {
   background: var(--accent-hover);
+}
+
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+
+  .markdown-content h1 {
+    font-size: 20px;
+  }
+
+  .markdown-content h2 {
+    font-size: 16px;
+  }
+
+  .markdown-content h3 {
+    font-size: 14px;
+  }
+
+  .markdown-content pre {
+    font-size: 12px;
+  }
 }
 
 .cl-socialButtonsBlockButton,

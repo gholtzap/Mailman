@@ -50,7 +50,7 @@ export default function NewPaperPage() {
   };
 
   return (
-    <div style={{ padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
+    <div className="p-4 md:p-8 max-w-2xl mx-auto">
       <h1 style={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: '32px' }}>
         Add New Paper
       </h1>
@@ -96,7 +96,8 @@ export default function NewPaperPage() {
             fontWeight: 500,
             cursor: (loading || !arxivUrl) ? 'not-allowed' : 'pointer',
             opacity: (loading || !arxivUrl) ? 0.5 : 1,
-            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+            minHeight: '44px'
           }}
           onMouseEnter={(e) => {
             if (!loading && arxivUrl) e.currentTarget.style.background = 'var(--accent-hover)';

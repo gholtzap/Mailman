@@ -64,7 +64,7 @@ export default function PaperDetailPage() {
 
   if (!processedPaper || !paper) {
     return (
-      <div style={{ padding: '32px', maxWidth: '900px' }}>
+      <div className="p-4 md:p-8 max-w-screen-lg">
         <div style={{
           background: 'var(--error-muted)',
           border: '0.5px solid var(--error)',
@@ -80,7 +80,7 @@ export default function PaperDetailPage() {
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1000px' }}>
+    <div className="p-4 md:p-8 max-w-screen-xl">
       <div style={{ marginBottom: '24px' }}>
         <Link href="/papers" style={{
           fontSize: '13px',
@@ -105,7 +105,7 @@ export default function PaperDetailPage() {
           {paper.title}
         </h1>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+        <div className="flex flex-col gap-2 text-sm">
           <div>
             <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Authors:</span>{' '}
             <span style={{ color: 'var(--text-primary)' }}>{paper.authors.join(", ")}</span>
@@ -176,7 +176,7 @@ export default function PaperDetailPage() {
             borderBottom: '0.5px solid var(--border-primary)',
             marginBottom: '24px'
           }}>
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="flex gap-2 overflow-x-auto">
               <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>
                 Summary (Humanized)
               </TabButton>
@@ -325,7 +325,9 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
         borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
         cursor: 'pointer',
         transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-        marginBottom: '-0.5px'
+        marginBottom: '-0.5px',
+        minHeight: '44px',
+        whiteSpace: 'nowrap'
       }}
       onMouseEnter={(e) => {
         if (!active) e.currentTarget.style.color = 'var(--text-primary)';

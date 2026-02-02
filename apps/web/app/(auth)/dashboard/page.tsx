@@ -87,7 +87,7 @@ export default function DashboardPage() {
 
   if (!data?.stats.hasApiKey) {
     return (
-      <div style={{ padding: '32px', maxWidth: '800px' }}>
+      <div className="p-4 md:p-8 max-w-screen-md">
         <div style={{
           background: 'var(--bg-secondary)',
           border: '0.5px solid var(--border-primary)',
@@ -122,8 +122,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1200px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+    <div className="p-4 md:p-8 max-w-screen-xl">
+      <div className="flex flex-wrap justify-between items-center mb-6 md:mb-8 gap-4">
         <h1 style={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
           Dashboard
         </h1>
@@ -131,7 +131,7 @@ export default function DashboardPage() {
           <Link href="/batch" style={{
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '6px 12px',
+            padding: '8px 12px',
             background: 'var(--bg-tertiary)',
             border: '0.5px solid var(--border-primary)',
             color: 'var(--text-secondary)',
@@ -139,7 +139,8 @@ export default function DashboardPage() {
             fontSize: '13px',
             fontWeight: 500,
             textDecoration: 'none',
-            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+            minHeight: '44px'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'var(--bg-elevated)';
@@ -154,14 +155,15 @@ export default function DashboardPage() {
           <Link href="/papers/new" style={{
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '6px 12px',
+            padding: '8px 12px',
             background: 'var(--accent)',
             color: 'white',
             borderRadius: '4px',
             fontSize: '13px',
             fontWeight: 500,
             textDecoration: 'none',
-            transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+            transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+            minHeight: '44px'
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = 'var(--accent-hover)'}
           onMouseLeave={(e) => e.currentTarget.style.background = 'var(--accent)'}>
@@ -170,14 +172,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 md:mb-8">
         <StatCard label="Completed Papers" value={data.stats.completedPapers} />
         <StatCard label="This Month" value={data.stats.monthlyUsage} />
         <StatCard label="Total Cost" value={`$${data.stats.totalCost.toFixed(2)}`} mono />
       </div>
 
       {data.activeJobs.length > 0 && (
-        <div style={{ marginBottom: '32px' }}>
+        <div className="mb-6 md:mb-8">
           <h2 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-primary)' }}>
             Active Jobs
           </h2>

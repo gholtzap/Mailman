@@ -14,9 +14,9 @@ export default async function AuthLayout({
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="flex min-h-screen">
       <Sidebar />
-      <main style={{ flex: 1, overflow: 'auto' }}>
+      <main className="flex-1 overflow-auto w-full md:w-auto">
         {children}
       </main>
     </div>

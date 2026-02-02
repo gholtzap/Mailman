@@ -14,7 +14,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       <nav
-        className="mx-auto px-8 py-4 flex justify-between items-center"
+        className="mx-auto px-4 md:px-8 py-4 flex justify-between items-center"
         style={{
           borderBottom: '0.5px solid var(--border-primary)',
           maxWidth: '1200px'
@@ -35,7 +35,7 @@ export default async function Home() {
             Mailman
           </div>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="flex gap-2 md:gap-3 items-center">
           <SignedOut>
             <SignInButton mode="modal">
               <button className="nav-secondary-btn">
@@ -57,10 +57,10 @@ export default async function Home() {
         </div>
       </nav>
 
-      <main className="mx-auto px-8 py-24" style={{ maxWidth: '1200px' }}>
-        <div className="text-center mb-32">
+      <main className="mx-auto px-4 md:px-8 py-12 md:py-24" style={{ maxWidth: '1200px' }}>
+        <div className="text-center mb-16 md:mb-32">
           <h1
-            className="text-5xl font-semibold mb-6"
+            className="text-3xl md:text-5xl font-semibold mb-6"
             style={{
               color: 'var(--text-primary)',
               letterSpacing: '-0.02em',

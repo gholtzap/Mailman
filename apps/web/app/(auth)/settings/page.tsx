@@ -90,7 +90,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ padding: '32px', maxWidth: '800px' }}>
+    <div className="p-4 md:p-8 max-w-screen-md">
       <h1 style={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: '32px' }}>
         Settings
       </h1>
@@ -121,7 +121,7 @@ export default function SettingsPage() {
                 onClick={handleDeleteApiKey}
                 disabled={loading}
                 style={{
-                  padding: '6px 12px',
+                  padding: '8px 12px',
                   background: 'var(--error)',
                   color: 'white',
                   border: 'none',
@@ -130,7 +130,8 @@ export default function SettingsPage() {
                   fontWeight: 500,
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.5 : 1,
-                  transition: 'opacity 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                  transition: 'opacity 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                  minHeight: '44px'
                 }}
               >
                 Delete API Key
@@ -162,7 +163,7 @@ export default function SettingsPage() {
                 onClick={handleSaveApiKey}
                 disabled={loading || !apiKey}
                 style={{
-                  padding: '6px 12px',
+                  padding: '8px 12px',
                   background: 'var(--accent)',
                   color: 'white',
                   border: 'none',
@@ -171,7 +172,8 @@ export default function SettingsPage() {
                   fontWeight: 500,
                   cursor: (loading || !apiKey) ? 'not-allowed' : 'pointer',
                   opacity: (loading || !apiKey) ? 0.5 : 1,
-                  transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                  transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                  minHeight: '44px'
                 }}
                 onMouseEnter={(e) => {
                   if (!loading && apiKey) e.currentTarget.style.background = 'var(--accent-hover)';
@@ -275,7 +277,7 @@ export default function SettingsPage() {
               onClick={handleSaveSettings}
               disabled={loading}
               style={{
-                padding: '6px 12px',
+                padding: '8px 12px',
                 background: 'var(--accent)',
                 color: 'white',
                 border: 'none',
@@ -285,7 +287,8 @@ export default function SettingsPage() {
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.5 : 1,
                 transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-                alignSelf: 'flex-start'
+                alignSelf: 'flex-start',
+                minHeight: '44px'
               }}
               onMouseEnter={(e) => {
                 if (!loading) e.currentTarget.style.background = 'var(--accent-hover)';

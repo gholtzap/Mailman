@@ -67,7 +67,7 @@ export default function BatchScrapePage() {
   };
 
   return (
-    <div style={{ padding: '32px', maxWidth: '900px' }}>
+    <div className="p-4 md:p-8 max-w-screen-lg">
       <div style={{ marginBottom: '24px' }}>
         <Link href="/dashboard" style={{
           fontSize: '13px',
@@ -103,7 +103,7 @@ export default function BatchScrapePage() {
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '12px' }}>
             Select Categories ({selectedCategories.length} selected)
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {POPULAR_CATEGORIES.map((category) => {
               const isSelected = selectedCategories.includes(category.id);
               return (
@@ -118,7 +118,8 @@ export default function BatchScrapePage() {
                     background: isSelected ? 'var(--accent-muted)' : 'var(--bg-secondary)',
                     textAlign: 'left',
                     cursor: 'pointer',
-                    transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                    transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                    minHeight: '44px'
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) {
@@ -189,7 +190,8 @@ export default function BatchScrapePage() {
             fontWeight: 500,
             cursor: (loading || selectedCategories.length === 0) ? 'not-allowed' : 'pointer',
             opacity: (loading || selectedCategories.length === 0) ? 0.5 : 1,
-            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+            minHeight: '44px'
           }}
           onMouseEnter={(e) => {
             if (!loading && selectedCategories.length > 0) e.currentTarget.style.background = 'var(--accent-hover)';

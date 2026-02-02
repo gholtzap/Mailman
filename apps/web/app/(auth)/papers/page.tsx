@@ -73,22 +73,23 @@ export default function PapersPage() {
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1200px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div className="p-4 md:p-8 max-w-screen-xl">
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
         <h1 style={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
           Papers
         </h1>
         <Link href="/papers/new" style={{
           display: 'inline-flex',
           alignItems: 'center',
-          padding: '6px 12px',
+          padding: '8px 12px',
           background: 'var(--accent)',
           color: 'white',
           borderRadius: '4px',
           fontSize: '13px',
           fontWeight: 500,
           textDecoration: 'none',
-          transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+          transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+          minHeight: '44px'
         }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--accent-hover)'}
         onMouseLeave={(e) => e.currentTarget.style.background = 'var(--accent)'}>
@@ -97,13 +98,13 @@ export default function PapersPage() {
       </div>
 
       <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div className="flex gap-2 flex-wrap">
           {["all", "pending", "processing", "completed", "failed"].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
               style={{
-                padding: '6px 12px',
+                padding: '8px 12px',
                 borderRadius: '4px',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -111,7 +112,8 @@ export default function PapersPage() {
                 background: statusFilter === status ? 'var(--accent)' : 'var(--bg-tertiary)',
                 color: statusFilter === status ? 'white' : 'var(--text-secondary)',
                 cursor: 'pointer',
-                transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                minHeight: '44px'
               }}
               onMouseEnter={(e) => {
                 if (statusFilter !== status) {
@@ -168,7 +170,7 @@ export default function PapersPage() {
                 e.currentTarget.style.borderColor = 'var(--border-primary)';
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+              <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div style={{ flex: 1 }}>
                   <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                     {paper.paper?.title || paper.arxivId}
@@ -198,7 +200,7 @@ export default function PapersPage() {
                     ))}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right', minWidth: '120px' }}>
+                <div className="flex sm:flex-col justify-between sm:justify-start items-start sm:text-right sm:min-w-[120px]">
                   <StatusBadge status={paper.status} />
                   {paper.status === 'failed' && (
                     <button
@@ -216,7 +218,8 @@ export default function PapersPage() {
                         cursor: retrying === paper._id ? 'not-allowed' : 'pointer',
                         opacity: retrying === paper._id ? 0.5 : 1,
                         transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-                        width: '100%'
+                        width: '100%',
+                        minHeight: '44px'
                       }}
                       onMouseEnter={(e) => {
                         if (retrying !== paper._id) {
