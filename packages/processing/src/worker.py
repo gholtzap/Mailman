@@ -25,6 +25,21 @@ db = mongo_client["paper-reader"]
 
 paper_queue = None
 
+def matches_keywords(paper, keywords, match_mode):
+    if not keywords or len(keywords) == 0:
+        return True
+
+    title = paper['title'].lower()
+    abstract = paper['abstract'].lower()
+    combined_text = f"{title} {abstract}"
+
+    keywords_lower = [kw.lower() for kw in keywords]
+
+    if match_mode == "all":
+        return all(kw in combined_text for kw in keywords_lower)
+    else:
+        return any(kw in combined_text for kw in keywords_lower)
+
 async def fetch_arxiv_papers(category, max_results=5):
     url = f"http://export.arxiv.org/api/query?search_query=cat:{category}&start=0&max_results={max_results}&sortBy=submittedDate&sortOrder=descending"
     response = requests.get(url)
@@ -88,13 +103,21 @@ async def process_batch_scrape(job):
         categories = job_data["categories"]
         papers_per_category = job_data["papersPerCategory"]
         max_pages = job_data["maxPagesPerPaper"]
+        keywords = job_data.get("keywords", [])
+        keyword_match_mode = job_data.get("keywordMatchMode", "any")
 
         total_papers = 0
+        filtered_count = 0
 
         for category in categories:
             fetched_papers = await fetch_arxiv_papers(category, papers_per_category)
 
             for paper_data in fetched_papers:
+                if not matches_keywords(paper_data, keywords, keyword_match_mode):
+                    filtered_count += 1
+                    print(f"Paper {paper_data['arxivId']} filtered out by keywords")
+                    continue
+
                 existing = papers_collection.find_one({"arxivId": paper_data["arxivId"]})
 
                 if not existing:
@@ -139,7 +162,7 @@ async def process_batch_scrape(job):
             }
         )
 
-        print(f"Batch scrape completed: {total_papers} papers queued for processing")
+        print(f"Batch scrape completed: {total_papers} papers queued for processing, {filtered_count} papers filtered by keywords")
 
     except Exception as e:
         print(f"Error in batch scrape: {e}")

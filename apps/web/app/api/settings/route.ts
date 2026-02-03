@@ -38,7 +38,11 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    settings: user.settings,
+    settings: {
+      ...user.settings,
+      keywords: user.settings.keywords || [],
+      keywordMatchMode: user.settings.keywordMatchMode || "any",
+    },
     hasApiKey: !!user.apiKey?.encryptedValue,
     apiKeyValid: user.apiKey?.isValid ?? false,
     usage: user.usage,
@@ -52,19 +56,34 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { defaultCategories, maxPagesPerPaper, papersPerCategory } = body;
+  const { defaultCategories, maxPagesPerPaper, papersPerCategory, keywords, keywordMatchMode } = body;
+
+  if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
+    return NextResponse.json(
+      { error: "keywordMatchMode must be 'any' or 'all'" },
+      { status: 400 }
+    );
+  }
 
   const users = await getUsersCollection();
+  const updateFields: any = {
+    "settings.defaultCategories": defaultCategories,
+    "settings.maxPagesPerPaper": maxPagesPerPaper,
+    "settings.papersPerCategory": papersPerCategory,
+    updatedAt: new Date(),
+  };
+
+  if (keywords !== undefined) {
+    updateFields["settings.keywords"] = keywords;
+  }
+
+  if (keywordMatchMode !== undefined) {
+    updateFields["settings.keywordMatchMode"] = keywordMatchMode;
+  }
+
   await users.updateOne(
     { clerkId: userId },
-    {
-      $set: {
-        "settings.defaultCategories": defaultCategories,
-        "settings.maxPagesPerPaper": maxPagesPerPaper,
-        "settings.papersPerCategory": papersPerCategory,
-        updatedAt: new Date(),
-      },
-    }
+    { $set: updateFields }
   );
 
   return NextResponse.json({ success: true });

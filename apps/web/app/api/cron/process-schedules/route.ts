@@ -51,14 +51,24 @@ export async function GET(request: Request) {
           continue;
         }
 
+        const jobInput: any = {
+          categories: schedule.categories,
+          papersPerCategory: schedule.papersPerCategory,
+        };
+
+        if (schedule.keywords !== undefined) {
+          jobInput.keywords = schedule.keywords;
+        }
+
+        if (schedule.keywordMatchMode !== undefined) {
+          jobInput.keywordMatchMode = schedule.keywordMatchMode;
+        }
+
         const job = await jobs.insertOne({
           userId: user._id!,
           type: "batch_scrape",
           status: "queued",
-          input: {
-            categories: schedule.categories,
-            papersPerCategory: schedule.papersPerCategory,
-          },
+          input: jobInput,
           progress: {
             total: schedule.categories.length * schedule.papersPerCategory,
             completed: 0,
@@ -69,7 +79,7 @@ export async function GET(request: Request) {
 
         console.log(`[Cron] Created job ${job.insertedId} for schedule ${schedule._id}`);
 
-        await paperProcessingQueue.add("batch-scrape", {
+        const queueData: any = {
           userId: user.clerkId,
           jobId: job.insertedId.toString(),
           categories: schedule.categories,
@@ -78,7 +88,17 @@ export async function GET(request: Request) {
           encryptedApiKey: user.apiKey,
           scheduleId: schedule._id.toString(),
           notificationEmail: schedule.email,
-        });
+        };
+
+        if (schedule.keywords !== undefined) {
+          queueData.keywords = schedule.keywords;
+        }
+
+        if (schedule.keywordMatchMode !== undefined) {
+          queueData.keywordMatchMode = schedule.keywordMatchMode;
+        }
+
+        await paperProcessingQueue.add("batch-scrape", queueData);
 
         console.log(`[Cron] Queued job ${job.insertedId} for schedule ${schedule._id}`);
 

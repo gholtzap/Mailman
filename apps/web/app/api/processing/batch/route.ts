@@ -15,13 +15,21 @@ export async function POST(request: Request) {
     console.log('[Batch API] User authenticated:', userId);
 
     const body = await request.json();
-    const { categories, papersPerCategory } = body;
+    const { categories, papersPerCategory, keywords, keywordMatchMode } = body;
     console.log('[Batch API] Categories:', categories, 'Papers per category:', papersPerCategory);
 
     if (!categories || categories.length === 0) {
       console.log('[Batch API] No categories provided');
       return NextResponse.json(
         { error: "At least one category is required" },
+        { status: 400 }
+      );
+    }
+
+    if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
+      console.log('[Batch API] Invalid keywordMatchMode:', keywordMatchMode);
+      return NextResponse.json(
+        { error: "keywordMatchMode must be 'any' or 'all'" },
         { status: 400 }
       );
     }
@@ -56,14 +64,24 @@ export async function POST(request: Request) {
 
     console.log('[Batch API] Creating job record...');
     const jobs = await getProcessingJobsCollection();
+    const jobInput: any = {
+      categories,
+      papersPerCategory: papersPerCategory || user.settings.papersPerCategory,
+    };
+
+    if (keywords !== undefined) {
+      jobInput.keywords = keywords;
+    }
+
+    if (keywordMatchMode !== undefined) {
+      jobInput.keywordMatchMode = keywordMatchMode;
+    }
+
     const job = await jobs.insertOne({
       userId: user._id!,
       type: "batch_scrape",
       status: "queued",
-      input: {
-        categories,
-        papersPerCategory: papersPerCategory || user.settings.papersPerCategory,
-      },
+      input: jobInput,
       progress: {
         total: categories.length * (papersPerCategory || user.settings.papersPerCategory),
         completed: 0,
@@ -74,14 +92,24 @@ export async function POST(request: Request) {
     console.log('[Batch API] Job created:', job.insertedId);
 
     console.log('[Batch API] Adding job to queue...');
-    await paperProcessingQueue.add("batch-scrape", {
+    const queueData: any = {
       userId: userId,
       jobId: job.insertedId.toString(),
       categories,
       papersPerCategory: papersPerCategory || user.settings.papersPerCategory,
       maxPagesPerPaper: user.settings.maxPagesPerPaper,
       encryptedApiKey: user.apiKey,
-    });
+    };
+
+    if (keywords !== undefined) {
+      queueData.keywords = keywords;
+    }
+
+    if (keywordMatchMode !== undefined) {
+      queueData.keywordMatchMode = keywordMatchMode;
+    }
+
+    await paperProcessingQueue.add("batch-scrape", queueData);
     console.log('[Batch API] Job added to queue successfully');
 
     return NextResponse.json({ success: true, jobId: job.insertedId });

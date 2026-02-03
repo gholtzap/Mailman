@@ -6,6 +6,8 @@ export interface User {
   email: string;
   settings: {
     defaultCategories: string[];
+    keywords?: string[];
+    keywordMatchMode?: "any" | "all";
     maxPagesPerPaper: number;
     papersPerCategory: number;
   };
@@ -65,6 +67,8 @@ export interface ProcessingJob {
     arxivUrl?: string;
     categories?: string[];
     papersPerCategory?: number;
+    keywords?: string[];
+    keywordMatchMode?: "any" | "all";
   };
   progress: {
     total: number;
@@ -79,6 +83,8 @@ export interface RecurringSchedule {
   userId: ObjectId;
   name: string;
   categories: string[];
+  keywords?: string[];
+  keywordMatchMode?: "any" | "all";
   papersPerCategory: number;
   intervalDays: number;
   email?: string;

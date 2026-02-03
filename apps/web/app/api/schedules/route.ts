@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, categories, papersPerCategory, intervalDays, email } = body;
+    const { name, categories, papersPerCategory, intervalDays, email, keywords, keywordMatchMode } = body;
 
     if (!name || !categories || categories.length === 0 || !papersPerCategory || !intervalDays) {
       return NextResponse.json(
@@ -60,6 +60,13 @@ export async function POST(request: Request) {
     if (![1, 3, 7, 14, 30].includes(intervalDays)) {
       return NextResponse.json(
         { error: "intervalDays must be one of: 1, 3, 7, 14, 30" },
+        { status: 400 }
+      );
+    }
+
+    if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
+      return NextResponse.json(
+        { error: "keywordMatchMode must be 'any' or 'all'" },
         { status: 400 }
       );
     }
@@ -89,6 +96,14 @@ export async function POST(request: Request) {
 
     if (email) {
       scheduleData.email = email;
+    }
+
+    if (keywords !== undefined) {
+      scheduleData.keywords = keywords;
+    }
+
+    if (keywordMatchMode !== undefined) {
+      scheduleData.keywordMatchMode = keywordMatchMode;
     }
 
     const schedule = await schedules.insertOne(scheduleData);
