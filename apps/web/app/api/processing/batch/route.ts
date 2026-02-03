@@ -15,24 +15,7 @@ export async function POST(request: Request) {
     console.log('[Batch API] User authenticated:', userId);
 
     const body = await request.json();
-    const { categories, papersPerCategory, keywords, keywordMatchMode } = body;
-    console.log('[Batch API] Categories:', categories, 'Papers per category:', papersPerCategory);
-
-    if (!categories || categories.length === 0) {
-      console.log('[Batch API] No categories provided');
-      return NextResponse.json(
-        { error: "At least one category is required" },
-        { status: 400 }
-      );
-    }
-
-    if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
-      console.log('[Batch API] Invalid keywordMatchMode:', keywordMatchMode);
-      return NextResponse.json(
-        { error: "keywordMatchMode must be 'any' or 'all'" },
-        { status: 400 }
-      );
-    }
+    console.log('[Batch API] Request body:', body);
 
     console.log('[Batch API] Fetching user from database...');
     const users = await getUsersCollection();
@@ -61,6 +44,29 @@ export async function POST(request: Request) {
       );
     }
     console.log('[Batch API] User settings found');
+
+    const { categories: providedCategories, papersPerCategory, keywords, keywordMatchMode } = body;
+    const categories = providedCategories && providedCategories.length > 0
+      ? providedCategories
+      : user.settings.defaultCategories;
+
+    console.log('[Batch API] Using categories:', categories);
+
+    if (!categories || categories.length === 0) {
+      console.log('[Batch API] No categories available (neither provided nor in default settings)');
+      return NextResponse.json(
+        { error: "At least one category is required" },
+        { status: 400 }
+      );
+    }
+
+    if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
+      console.log('[Batch API] Invalid keywordMatchMode:', keywordMatchMode);
+      return NextResponse.json(
+        { error: "keywordMatchMode must be 'any' or 'all'" },
+        { status: 400 }
+      );
+    }
 
     console.log('[Batch API] Creating job record...');
     const jobs = await getProcessingJobsCollection();

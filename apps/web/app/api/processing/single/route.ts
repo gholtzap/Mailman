@@ -85,8 +85,10 @@ export async function POST(request: Request) {
             {
               $set: {
                 status: 'pending',
-                updatedAt: new Date(),
-                error: undefined
+                updatedAt: new Date()
+              },
+              $unset: {
+                error: ''
               }
             },
             { session }
