@@ -11,13 +11,19 @@ import {
   generateBatchCompletionEmail,
   generateBatchCompletionTextEmail,
 } from "@/lib/email/templates";
+import { createLogger } from "@/lib/logging";
 
 export async function POST(request: Request) {
+  const log = createLogger({ route: "email-batch-completion" });
+
   try {
     const body = await request.json();
     const { jobId, scheduleId } = body;
 
+    log.info({ jobId, scheduleId }, "Processing batch completion email");
+
     if (!jobId) {
+      log.warn("Missing jobId");
       return NextResponse.json(
         { error: "jobId is required" },
         { status: 400 }
@@ -28,10 +34,12 @@ export async function POST(request: Request) {
     const job = await jobs.findOne({ _id: new ObjectId(jobId) });
 
     if (!job) {
+      log.warn({ jobId }, "Job not found");
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
     if (job.status !== "completed") {
+      log.warn({ jobId, status: job.status }, "Job not completed");
       return NextResponse.json(
         { error: "Job is not completed yet" },
         { status: 400 }
@@ -50,10 +58,12 @@ export async function POST(request: Request) {
       if (schedule) {
         notificationEmail = schedule.email;
         scheduleName = schedule.name;
+        log.debug({ scheduleId, scheduleName, notificationEmail }, "Found schedule");
       }
     }
 
     if (!notificationEmail) {
+      log.warn({ scheduleId }, "No notification email configured");
       return NextResponse.json(
         { error: "No notification email configured for this schedule" },
         { status: 400 }
@@ -72,6 +82,8 @@ export async function POST(request: Request) {
       .sort({ createdAt: -1 })
       .limit(job.input.papersPerCategory! * job.input.categories!.length)
       .toArray();
+
+    log.debug({ paperCount: jobProcessedPapers.length }, "Found processed papers for job");
 
     const paperSummaries = await Promise.all(
       jobProcessedPapers.map(async (pp) => {
@@ -93,6 +105,7 @@ export async function POST(request: Request) {
     const validPaperSummaries = paperSummaries.filter((p) => p !== null);
 
     if (validPaperSummaries.length === 0) {
+      log.warn({ jobId }, "No papers found for job");
       return NextResponse.json(
         { error: "No papers found for this job" },
         { status: 404 }
@@ -113,6 +126,8 @@ export async function POST(request: Request) {
 
     const resend = getResendClient();
 
+    log.info({ to: notificationEmail, paperCount: validPaperSummaries.length }, "Sending batch completion email");
+
     await resend.emails.send({
       from: FROM_EMAIL,
       to: notificationEmail,
@@ -121,6 +136,8 @@ export async function POST(request: Request) {
       text: textEmail,
     });
 
+    log.info({ recipientEmail: notificationEmail, paperCount: validPaperSummaries.length }, "Email sent successfully");
+
     return NextResponse.json({
       success: true,
       emailSent: true,
@@ -128,7 +145,7 @@ export async function POST(request: Request) {
       paperCount: validPaperSummaries.length,
     });
   } catch (error) {
-    console.error("[Email Batch Completion] ERROR:", error);
+    log.error({ err: error }, "Failed to send batch completion email");
     return NextResponse.json(
       {
         error: "Failed to send email",

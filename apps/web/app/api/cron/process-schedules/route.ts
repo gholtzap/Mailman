@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { getRecurringSchedulesCollection, getProcessingJobsCollection, getUsersCollection } from "@/lib/db/collections";
 import { paperProcessingQueue } from "@/lib/queue";
+import { createLogger } from "@/lib/logging";
 
 export async function GET(request: Request) {
+  const log = createLogger({ route: "cron-process-schedules" });
+
   try {
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
     if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) {
+      log.warn("Unauthorized cron request");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    log.info("Starting scheduled processing job");
 
     const schedules = await getRecurringSchedulesCollection();
     const users = await getUsersCollection();
@@ -24,21 +30,22 @@ export async function GET(request: Request) {
       .limit(10)
       .toArray();
 
-    console.log(`[Cron] Found ${dueSchedules.length} due schedules`);
+    log.info({ count: dueSchedules.length }, "Found due schedules");
 
     const results = [];
 
     for (const schedule of dueSchedules) {
+      const scheduleLog = log.child({ scheduleId: schedule._id });
       try {
         const user = await users.findOne({ _id: schedule.userId });
 
         if (!user) {
-          console.log(`[Cron] User not found for schedule ${schedule._id}, skipping`);
+          scheduleLog.warn("User not found, skipping schedule");
           continue;
         }
 
         if (!user.apiKey) {
-          console.log(`[Cron] User ${user._id} has no API key, pausing schedule ${schedule._id}`);
+          scheduleLog.warn("User has no API key, pausing schedule");
           await schedules.updateOne(
             { _id: schedule._id },
             { $set: { status: "paused", updatedAt: new Date() } }
@@ -77,7 +84,7 @@ export async function GET(request: Request) {
           updatedAt: new Date(),
         });
 
-        console.log(`[Cron] Created job ${job.insertedId} for schedule ${schedule._id}`);
+        scheduleLog.info({ jobId: job.insertedId }, "Created job for schedule");
 
         const queueData: any = {
           userId: user.clerkId,
@@ -100,8 +107,6 @@ export async function GET(request: Request) {
 
         await paperProcessingQueue.add("batch-scrape", queueData);
 
-        console.log(`[Cron] Queued job ${job.insertedId} for schedule ${schedule._id}`);
-
         const nextRunAt = new Date(now);
         nextRunAt.setDate(nextRunAt.getDate() + schedule.intervalDays);
 
@@ -118,7 +123,7 @@ export async function GET(request: Request) {
           }
         );
 
-        console.log(`[Cron] Updated schedule ${schedule._id}, next run at ${nextRunAt}`);
+        scheduleLog.info({ nextRunAt }, "Schedule updated successfully");
 
         results.push({
           scheduleId: schedule._id,
@@ -127,7 +132,7 @@ export async function GET(request: Request) {
           nextRunAt,
         });
       } catch (error) {
-        console.error(`[Cron] Error processing schedule ${schedule._id}:`, error);
+        scheduleLog.error({ err: error }, "Error processing schedule");
         results.push({
           scheduleId: schedule._id,
           status: "error",
@@ -136,13 +141,15 @@ export async function GET(request: Request) {
       }
     }
 
+    log.info({ processed: results.length }, "Completed schedule processing");
+
     return NextResponse.json({
       success: true,
       processed: results.length,
       results,
     });
   } catch (error) {
-    console.error("[Cron] ERROR:", error);
+    log.error({ err: error }, "Cron job failed");
     return NextResponse.json({
       error: "Internal server error",
       details: error instanceof Error ? error.message : String(error)

@@ -2,10 +2,14 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
 import { encryptApiKey, validateAnthropicApiKey } from "@/lib/encryption";
+import { createLogger } from "@/lib/logging";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
+  const log = createLogger({ route: "settings-api-key", userId: userId || "anonymous" });
+
   if (!userId) {
+    log.warn("Unauthorized request");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -13,14 +17,17 @@ export async function POST(request: Request) {
   const { apiKey } = body;
 
   if (!apiKey || !apiKey.startsWith("sk-ant-")) {
+    log.warn("Invalid API key format");
     return NextResponse.json(
       { error: "Invalid API key format" },
       { status: 400 }
     );
   }
 
+  log.info("Validating API key with Anthropic");
   const validation = await validateAnthropicApiKey(apiKey);
   if (!validation.valid) {
+    log.warn({ error: validation.error }, "API key validation failed");
     return NextResponse.json(
       { error: validation.error || "API key validation failed" },
       { status: 400 }
@@ -43,12 +50,17 @@ export async function POST(request: Request) {
     }
   );
 
+  log.info("API key updated successfully");
+
   return NextResponse.json({ success: true });
 }
 
 export async function DELETE() {
   const { userId } = await auth();
+  const log = createLogger({ route: "settings-api-key-delete", userId: userId || "anonymous" });
+
   if (!userId) {
+    log.warn("Unauthorized request");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -60,6 +72,8 @@ export async function DELETE() {
       $set: { updatedAt: new Date() },
     }
   );
+
+  log.info("API key deleted successfully");
 
   return NextResponse.json({ success: true });
 }

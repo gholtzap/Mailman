@@ -2,58 +2,57 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getUsersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { paperProcessingQueue } from "@/lib/queue";
+import { createLogger } from "@/lib/logging";
 
 export async function POST(request: Request) {
-  try {
-    console.log('[Batch API] Starting batch processing request');
+  const { userId } = await auth();
+  const log = createLogger({ route: "batch-processing", userId: userId || "anonymous" });
 
-    const { userId } = await auth();
+  try {
+    log.info("Starting batch processing request");
+
     if (!userId) {
-      console.log('[Batch API] Unauthorized - no userId');
+      log.warn("Unauthorized request - no userId");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.log('[Batch API] User authenticated:', userId);
 
     const body = await request.json();
-    console.log('[Batch API] Request body:', body);
+    log.debug({ body }, "Received request body");
 
-    console.log('[Batch API] Fetching user from database...');
     const users = await getUsersCollection();
     const user = await users.findOne({ clerkId: userId });
 
     if (!user) {
-      console.log('[Batch API] User not found in database');
+      log.warn("User not found in database");
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    console.log('[Batch API] User found:', user._id);
+    log.debug({ dbUserId: user._id }, "User found in database");
 
     if (!user.apiKey) {
-      console.log('[Batch API] User has no API key configured');
+      log.warn("User has no API key configured");
       return NextResponse.json(
         { error: "API key not configured" },
         { status: 400 }
       );
     }
-    console.log('[Batch API] User has API key configured');
 
     if (!user.settings) {
-      console.log('[Batch API] User has no settings configured');
+      log.error("User has no settings configured");
       return NextResponse.json(
         { error: "User settings not found. Please contact support." },
         { status: 400 }
       );
     }
-    console.log('[Batch API] User settings found');
 
     const { categories: providedCategories, papersPerCategory, keywords, keywordMatchMode } = body;
     const categories = providedCategories && providedCategories.length > 0
       ? providedCategories
       : user.settings.defaultCategories;
 
-    console.log('[Batch API] Using categories:', categories);
+    log.debug({ categories, papersPerCategory, keywords, keywordMatchMode }, "Processing parameters");
 
     if (!categories || categories.length === 0) {
-      console.log('[Batch API] No categories available (neither provided nor in default settings)');
+      log.warn("No categories available");
       return NextResponse.json(
         { error: "At least one category is required" },
         { status: 400 }
@@ -61,14 +60,13 @@ export async function POST(request: Request) {
     }
 
     if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
-      console.log('[Batch API] Invalid keywordMatchMode:', keywordMatchMode);
+      log.warn({ keywordMatchMode }, "Invalid keywordMatchMode");
       return NextResponse.json(
         { error: "keywordMatchMode must be 'any' or 'all'" },
         { status: 400 }
       );
     }
 
-    console.log('[Batch API] Creating job record...');
     const jobs = await getProcessingJobsCollection();
     const jobInput: any = {
       categories,
@@ -95,9 +93,8 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    console.log('[Batch API] Job created:', job.insertedId);
+    log.info({ jobId: job.insertedId }, "Job created and queued");
 
-    console.log('[Batch API] Adding job to queue...');
     const queueData: any = {
       userId: userId,
       jobId: job.insertedId.toString(),
@@ -116,11 +113,11 @@ export async function POST(request: Request) {
     }
 
     await paperProcessingQueue.add("batch-scrape", queueData);
-    console.log('[Batch API] Job added to queue successfully');
+    log.info("Job added to queue successfully");
 
     return NextResponse.json({ success: true, jobId: job.insertedId });
   } catch (error) {
-    console.error('[Batch API] ERROR:', error);
+    log.error({ err: error }, "Batch processing failed");
     return NextResponse.json({
       error: "Internal server error",
       details: error instanceof Error ? error.message : String(error)

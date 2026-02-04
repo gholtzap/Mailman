@@ -1,11 +1,17 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getUsersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
+import { createLogger } from "@/lib/logging";
 
 export async function GET() {
+  const { userId } = await auth();
+  const log = createLogger({ route: "dashboard", userId: userId || "anonymous" });
+
   try {
-    const { userId } = await auth();
+    log.info("Fetching dashboard data");
+
     if (!userId) {
+      log.warn("Unauthorized request");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -13,6 +19,7 @@ export async function GET() {
     let user = await users.findOne({ clerkId: userId });
 
     if (!user) {
+      log.info("User not found, creating new user");
       const clerkUser = await currentUser();
       const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
 
@@ -34,9 +41,10 @@ export async function GET() {
 
       user = await users.findOne({ _id: result.insertedId });
       if (!user) {
-        console.error("Failed to create user after insert");
+        log.error("Failed to create user after insert");
         return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
       }
+      log.info({ dbUserId: user._id }, "User created successfully");
     }
 
     const processedPapers = await getProcessedPapersCollection();
@@ -70,6 +78,15 @@ export async function GET() {
       ])
       .toArray();
 
+    log.debug(
+      {
+        recentPapersCount: recentPapers.length,
+        activeJobsCount: activeJobs.length,
+        completedCount,
+      },
+      "Dashboard data retrieved"
+    );
+
     return NextResponse.json({
       recentPapers,
       activeJobs,
@@ -81,7 +98,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Dashboard API error:", error);
+    log.error({ err: error }, "Dashboard API error");
     return NextResponse.json(
       {
         error: "Internal server error",

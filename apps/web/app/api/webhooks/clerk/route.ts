@@ -2,11 +2,15 @@ import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
+import { createLogger } from "@/lib/logging";
 
 export async function POST(req: Request) {
+  const log = createLogger({ route: "clerk-webhook" });
+
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
+    log.error("CLERK_WEBHOOK_SECRET not configured");
     throw new Error("Please add CLERK_WEBHOOK_SECRET to .env.local");
   }
 
@@ -16,6 +20,7 @@ export async function POST(req: Request) {
   const svix_signature = headerPayload.get("svix-signature");
 
   if (!svix_id || !svix_timestamp || !svix_signature) {
+    log.warn("Missing Svix headers");
     return NextResponse.json({ error: "Missing headers" }, { status: 400 });
   }
 
@@ -33,11 +38,12 @@ export async function POST(req: Request) {
       "svix-signature": svix_signature,
     }) as any;
   } catch (err) {
-    console.error("Error verifying webhook:", err);
+    log.error({ err }, "Webhook signature verification failed");
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   const eventType = evt.type;
+  log.info({ eventType }, "Processing Clerk webhook event");
 
   if (eventType === "user.created") {
     const { id, email_addresses } = evt.data;
@@ -59,6 +65,7 @@ export async function POST(req: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    log.info({ clerkId: id, email }, "User created successfully");
   }
 
   return NextResponse.json({ success: true });
