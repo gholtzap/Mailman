@@ -29,11 +29,7 @@ export async function POST(request: Request) {
     log.debug({ dbUserId: user._id }, "User found in database");
 
     if (!user.apiKey) {
-      log.warn("User has no API key configured");
-      return NextResponse.json(
-        { error: "API key not configured" },
-        { status: 400 }
-      );
+      log.info("User has no API key - will process without AI summarization");
     }
 
     if (!user.settings) {
@@ -101,7 +97,7 @@ export async function POST(request: Request) {
       categories,
       papersPerCategory: papersPerCategory || user.settings.papersPerCategory,
       maxPagesPerPaper: user.settings.maxPagesPerPaper,
-      encryptedApiKey: user.apiKey,
+      encryptedApiKey: user.apiKey || null,
     };
 
     if (keywords !== undefined) {

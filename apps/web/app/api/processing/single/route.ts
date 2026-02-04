@@ -31,11 +31,7 @@ export async function POST(request: Request) {
     }
 
     if (!user.apiKey) {
-      log.warn("User has no API key configured");
-      return NextResponse.json(
-        { error: "API key not configured" },
-        { status: 400 }
-      );
+      log.info("User has no API key - will process without AI summarization");
     }
 
     const papers = await getPapersCollection();
@@ -129,7 +125,7 @@ export async function POST(request: Request) {
       userId: userId,
       paperId: paperId,
       arxivId: paper.arxivId,
-      encryptedApiKey: user.apiKey,
+      encryptedApiKey: user.apiKey || null,
       jobId: jobId.toString(),
       processedPaperId: processedPaperId,
     });

@@ -43,6 +43,32 @@ def check_pdf_page_count(pdf_content, max_pages=25):
         # Allow processing to continue if we can't check page count
         return True, None
 
+def extract_raw_text_from_pdf(pdf_url, max_pages=50):
+    print("Extracting raw text from PDF without AI processing")
+
+    print("Fetching paper content")
+    pdf_content = fetch_pdf_content(pdf_url)
+
+    print("Checking PDF page count")
+    is_valid, page_count = check_pdf_page_count(pdf_content, max_pages)
+
+    if not is_valid:
+        raise ValueError(f"Paper exceeds {max_pages}-page limit (has {page_count} pages)")
+
+    print("Extracting text from PDF")
+    pdf_file = io.BytesIO(pdf_content)
+    pdf_reader = PdfReader(pdf_file)
+
+    extracted_text = []
+    for page_num, page in enumerate(pdf_reader.pages, 1):
+        page_text = page.extract_text()
+        extracted_text.append(f"--- Page {page_num} ---\n{page_text}\n")
+
+    full_text = "\n".join(extracted_text)
+    print(f"Extracted {len(full_text)} characters from {page_count} pages")
+
+    return full_text, page_count
+
 def load_read_paper_prompt():
     try:
         with open("prompts/read_paper.txt", "r") as f:

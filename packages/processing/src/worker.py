@@ -14,7 +14,7 @@ load_dotenv()
 
 sys.path.append(str(Path(__file__).parent))
 
-from process_paper import generate_text_from_paper, humanize_text
+from process_paper import generate_text_from_paper, humanize_text, extract_raw_text_from_pdf
 import xml.etree.ElementTree as ET
 
 MONGODB_URI = os.getenv("MONGODB_URI")
@@ -145,7 +145,7 @@ async def process_batch_scrape(job):
                         "userId": job_data["userId"],
                         "processedPaperId": str(proc_result.inserted_id),
                         "arxivId": paper_data["arxivId"],
-                        "encryptedApiKey": job_data["encryptedApiKey"],
+                        "encryptedApiKey": job_data.get("encryptedApiKey"),
                         "jobId": job_data["jobId"]
                     })
 
@@ -205,60 +205,88 @@ async def process_single_paper(job):
     job_data = job.data
 
     try:
-        api_key = decrypt_api_key(job_data["encryptedApiKey"])
-        print(f"Decrypted API key length: {len(api_key) if api_key else 0}, starts with: {api_key[:10] if api_key else 'None'}...")
-        
+        encrypted_api_key = job_data.get("encryptedApiKey")
+
+        if encrypted_api_key:
+            api_key = decrypt_api_key(encrypted_api_key)
+            print(f"Decrypted API key length: {len(api_key) if api_key else 0}, starts with: {api_key[:10] if api_key else 'None'}...")
+        else:
+            api_key = None
+            print("No API key provided - will extract raw text only")
+
         processed_papers = db["processed_papers"]
         processed_papers.update_one(
             {"_id": ObjectId(job_data["processedPaperId"])},
             {"$set": {"status": "processing", "updatedAt": datetime.utcnow()}}
         )
-        
+
         pdf_url = f"https://arxiv.org/pdf/{job_data['arxivId']}.pdf"
         prompts_dir = os.path.join(os.path.dirname(__file__), "..", "prompts")
-        
-        generated_text, page_count, opus_in, opus_out = generate_text_from_paper(
-            pdf_url,
-            api_key,
-            max_pages=50,
-            prompts_dir=prompts_dir
-        )
-        
-        humanized_text, sonnet_in, sonnet_out = humanize_text(
-            generated_text,
-            api_key,
-            prompts_dir
-        )
-        
-        opus_cost = (opus_in / 1_000_000 * 15.00) + (opus_out / 1_000_000 * 75.00)
-        sonnet_cost = (sonnet_in / 1_000_000 * 3.00) + (sonnet_out / 1_000_000 * 15.00)
-        total_cost = opus_cost + sonnet_cost
-        
-        processed_papers.update_one(
-            {"_id": ObjectId(job_data["processedPaperId"])},
-            {
-                "$set": {
-                    "status": "completed",
-                    "generatedContent": generated_text,
-                    "humanizedContent": humanized_text,
-                    "costs": {
-                        "opusInputTokens": opus_in,
-                        "opusOutputTokens": opus_out,
-                        "sonnetInputTokens": sonnet_in,
-                        "sonnetOutputTokens": sonnet_out,
-                        "estimatedCostUsd": round(total_cost, 4)
-                    },
-                    "updatedAt": datetime.utcnow()
+
+        if api_key:
+            generated_text, page_count, opus_in, opus_out = generate_text_from_paper(
+                pdf_url,
+                api_key,
+                max_pages=50,
+                prompts_dir=prompts_dir
+            )
+
+            humanized_text, sonnet_in, sonnet_out = humanize_text(
+                generated_text,
+                api_key,
+                prompts_dir
+            )
+
+            opus_cost = (opus_in / 1_000_000 * 15.00) + (opus_out / 1_000_000 * 75.00)
+            sonnet_cost = (sonnet_in / 1_000_000 * 3.00) + (sonnet_out / 1_000_000 * 15.00)
+            total_cost = opus_cost + sonnet_cost
+
+            processed_papers.update_one(
+                {"_id": ObjectId(job_data["processedPaperId"])},
+                {
+                    "$set": {
+                        "status": "completed",
+                        "generatedContent": generated_text,
+                        "humanizedContent": humanized_text,
+                        "costs": {
+                            "opusInputTokens": opus_in,
+                            "opusOutputTokens": opus_out,
+                            "sonnetInputTokens": sonnet_in,
+                            "sonnetOutputTokens": sonnet_out,
+                            "estimatedCostUsd": round(total_cost, 4)
+                        },
+                        "updatedAt": datetime.utcnow()
+                    }
                 }
-            }
-        )
-        
+            )
+        else:
+            raw_text, page_count = extract_raw_text_from_pdf(pdf_url, max_pages=50)
+
+            processed_papers.update_one(
+                {"_id": ObjectId(job_data["processedPaperId"])},
+                {
+                    "$set": {
+                        "status": "completed",
+                        "generatedContent": raw_text,
+                        "humanizedContent": None,
+                        "costs": {
+                            "opusInputTokens": 0,
+                            "opusOutputTokens": 0,
+                            "sonnetInputTokens": 0,
+                            "sonnetOutputTokens": 0,
+                            "estimatedCostUsd": 0.0
+                        },
+                        "updatedAt": datetime.utcnow()
+                    }
+                }
+            )
+
         papers = db["papers"]
         papers.update_one(
             {"arxivId": job_data["arxivId"]},
             {"$set": {"pageCount": page_count}}
         )
-        
+
         jobs = db["processing_jobs"]
         jobs.update_one(
             {"_id": ObjectId(job_data["jobId"])},
@@ -270,12 +298,12 @@ async def process_single_paper(job):
                 }
             }
         )
-        
+
         print(f"Successfully processed paper {job_data['arxivId']}")
-        
+
     except Exception as e:
         print(f"Error processing paper: {e}")
-        
+
         processed_papers = db["processed_papers"]
         processed_papers.update_one(
             {"_id": ObjectId(job_data["processedPaperId"])},
@@ -287,7 +315,7 @@ async def process_single_paper(job):
                 }
             }
         )
-        
+
         jobs = db["processing_jobs"]
         jobs.update_one(
             {"_id": ObjectId(job_data["jobId"])},
@@ -298,7 +326,7 @@ async def process_single_paper(job):
                 }
             }
         )
-        
+
         raise
 
 async def process_job(job, token):
