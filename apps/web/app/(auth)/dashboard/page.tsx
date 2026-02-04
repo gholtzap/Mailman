@@ -38,6 +38,7 @@ interface DashboardData {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,10 +48,23 @@ export default function DashboardPage() {
   }, []);
 
   const fetchDashboard = async () => {
-    const res = await fetch("/api/dashboard");
-    const dashboardData = await res.json();
-    setData(dashboardData);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/dashboard");
+      const dashboardData = await res.json();
+
+      if (!res.ok) {
+        setError(dashboardData.message || dashboardData.error || "Failed to load dashboard");
+        setLoading(false);
+        return;
+      }
+
+      setData(dashboardData);
+      setError(null);
+      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard");
+      setLoading(false);
+    }
   };
 
   const cancelJob = async (jobId: string) => {
@@ -81,6 +95,48 @@ export default function DashboardPage() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-8 max-w-screen-md">
+        <div style={{
+          background: 'var(--error-muted)',
+          border: '0.5px solid var(--error)',
+          borderRadius: '6px',
+          padding: '16px'
+        }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: 'var(--error)' }}>
+            Error Loading Dashboard
+          </h2>
+          <p style={{ fontSize: '13px', color: 'var(--text-primary)', marginBottom: '16px' }}>
+            {error}
+          </p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              fetchDashboard();
+            }}
+            style={{
+              padding: '6px 12px',
+              background: 'var(--error)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'opacity 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
