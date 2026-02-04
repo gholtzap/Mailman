@@ -141,43 +141,37 @@ export default function DashboardPage() {
     );
   }
 
-  if (!data?.stats.hasApiKey) {
-    return (
-      <div className="p-4 md:p-8 max-w-screen-md">
-        <div style={{
-          background: 'var(--bg-secondary)',
-          border: '0.5px solid var(--border-primary)',
-          borderRadius: '6px',
-          padding: '16px'
-        }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-primary)' }}>
-            API Key Required
-          </h2>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Configure your Anthropic API key before processing papers.
-          </p>
-          <Link href="/settings" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '6px 12px',
-            background: 'var(--accent)',
-            color: 'white',
-            borderRadius: '4px',
-            fontSize: '13px',
-            fontWeight: 500,
-            textDecoration: 'none',
-            transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--accent-hover)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'var(--accent)'}>
-            Go to Settings
-          </Link>
-        </div>
-      </div>
-    );
+  if (!data) {
+    return null;
   }
 
   return (
+    <>
+      {!data.stats.hasApiKey && (
+        <div className="p-4 md:p-8 max-w-screen-xl">
+          <div style={{
+            background: 'var(--warning-muted)',
+            border: '0.5px solid var(--warning)',
+            borderRadius: '6px',
+            padding: '12px',
+            marginBottom: '16px'
+          }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+              No API key configured. Papers will be processed without AI summarization (raw text extraction only).{' '}
+              <Link href="/settings" style={{
+                color: 'var(--accent)',
+                textDecoration: 'none',
+                transition: 'color 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent)'}>
+                Add API key
+              </Link>
+            </p>
+          </div>
+        </div>
+      )}
+
     <div className="p-4 md:p-8 max-w-screen-xl">
       <div className="flex flex-wrap justify-between items-center mb-6 md:mb-8 gap-4">
         <h1 style={{ fontSize: '24px', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
@@ -379,6 +373,7 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
