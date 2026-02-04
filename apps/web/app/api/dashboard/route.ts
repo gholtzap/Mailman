@@ -56,8 +56,16 @@ export async function GET() {
       .limit(5)
       .toArray();
 
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
     const activeJobs = await jobs
-      .find({ userId: user._id, status: { $in: ["queued", "running", "failed"] } })
+      .find({
+        userId: user._id,
+        $or: [
+          { status: { $in: ["running", "failed"] } },
+          { status: "queued", createdAt: { $gte: oneHourAgo } },
+        ],
+      })
       .sort({ createdAt: -1 })
       .toArray();
 
