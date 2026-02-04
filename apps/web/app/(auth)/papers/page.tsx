@@ -2,8 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { DndContext, closestCenter, DragEndEvent } from "@dnd-kit/core";
+import { DndContext, closestCenter, pointerWithin, DragOverlay, CollisionDetection, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+
+const customCollisionDetection: CollisionDetection = (args) => {
+  const pointerIntersections = pointerWithin(args);
+  if (pointerIntersections.length > 0) {
+    return pointerIntersections;
+  }
+  return closestCenter(args);
+};
 import FolderSidebar from "./FolderSidebar";
 import PaperCard from "./PaperCard";
 
@@ -38,6 +46,7 @@ export default function PapersPage() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const fetchPapers = useCallback(async () => {
     const params = new URLSearchParams();
@@ -87,53 +96,69 @@ export default function PapersPage() {
     }
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveId(null);
     const { active, over } = event;
     if (!over) return;
 
-    const paperId = active.id as string;
+    const activeId = String(active.id);
+    const overId = String(over.id);
 
-    if (over.id === "unfiled") {
+    const activeIsFolderIdx = folders.findIndex((f) => f._id === activeId);
+    if (activeIsFolderIdx !== -1) {
+      const overIdx = folders.findIndex((f) => f._id === overId);
+      if (overIdx === -1 || activeIsFolderIdx === overIdx) return;
+
+      const reordered = [...folders];
+      const [moved] = reordered.splice(activeIsFolderIdx, 1);
+      reordered.splice(overIdx, 0, moved);
+
+      const updated = reordered.map((f, i) => ({ ...f, order: i }));
+      setFolders(updated);
+
+      await fetch("/api/folders/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: updated.map((f) => f._id) }),
+      });
+      return;
+    }
+
+    const paperId = activeId;
+
+    if (overId === "unfiled") {
       await fetch(`/api/papers/${paperId}/folder`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folderId: null }),
       });
       setPapers((prev) => prev.map((p) => (p._id === paperId ? { ...p, folderId: undefined } : p)));
-      return;
-    }
-
-    const folderTargetId = String(over.id).replace("folder-", "");
-    if (folderTargetId !== over.id) {
-      await fetch(`/api/papers/${paperId}/folder`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderId: folderTargetId }),
-      });
-      setPapers((prev) => prev.map((p) => (p._id === paperId ? { ...p, folderId: folderTargetId } : p)));
-
-      if (selectedFolderId && selectedFolderId !== folderTargetId) {
+      if (selectedFolderId) {
         setPapers((prev) => prev.filter((p) => p._id !== paperId));
       }
       return;
     }
 
-    const activeIdx = folders.findIndex((f) => f._id === active.id);
-    const overIdx = folders.findIndex((f) => f._id === over.id);
-    if (activeIdx === -1 || overIdx === -1 || activeIdx === overIdx) return;
-
-    const reordered = [...folders];
-    const [moved] = reordered.splice(activeIdx, 1);
-    reordered.splice(overIdx, 0, moved);
-
-    const updated = reordered.map((f, i) => ({ ...f, order: i }));
-    setFolders(updated);
-
-    await fetch("/api/folders/reorder", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order: updated.map((f) => f._id) }),
-    });
+    const targetFolder = folders.find((f) => f._id === overId);
+    if (targetFolder) {
+      await fetch(`/api/papers/${paperId}/folder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId: targetFolder._id }),
+      });
+      setPapers((prev) => prev.map((p) => (p._id === paperId ? { ...p, folderId: targetFolder._id } : p)));
+      if (selectedFolderId && selectedFolderId !== targetFolder._id) {
+        setPapers((prev) => prev.filter((p) => p._id !== paperId));
+      }
+    }
   };
 
   const getFolderColor = (paper: Paper): string | undefined => {
@@ -151,7 +176,12 @@ export default function PapersPage() {
   }
 
   return (
-    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      collisionDetection={customCollisionDetection}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
       <div className="p-4 md:p-8 max-w-screen-xl">
         <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -322,6 +352,23 @@ export default function PapersPage() {
           </div>
         </div>
       </div>
+      <DragOverlay dropAnimation={null}>
+        {activeId && papers.find((p) => p._id === activeId) ? (
+          <div style={{
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--accent)",
+            borderRadius: "6px",
+            padding: "10px 14px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+            cursor: "grabbing",
+            maxWidth: "320px",
+          }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
+              {papers.find((p) => p._id === activeId)?.paper?.title || activeId}
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }

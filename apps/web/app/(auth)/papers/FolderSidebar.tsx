@@ -169,7 +169,7 @@ function AllPapersDroppable({ isSelected, onClick }: { isSelected: boolean; onCl
         transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
       }}
     >
-      <span style={{ fontSize: "14px" }}>All</span>
+      <span style={{ fontSize: "14px" }}></span>
       All Papers
     </button>
   );
@@ -226,18 +226,12 @@ function SortableFolderItem({
   onDelete: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id: folder._id });
-  const { setNodeRef: setDropRef, isOver: isDropOver } = useDroppable({ id: `folder-${folder._id}` });
   const [showMenu, setShowMenu] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-  };
-
-  const setRefs = (node: HTMLDivElement | null) => {
-    setNodeRef(node);
-    setDropRef(node);
   };
 
   if (isEditing) {
@@ -260,7 +254,7 @@ function SortableFolderItem({
 
   return (
     <div
-      ref={setRefs}
+      ref={setNodeRef}
       style={{
         ...style,
         position: "relative",
@@ -276,8 +270,8 @@ function SortableFolderItem({
           width: "100%",
           textAlign: "left",
           padding: "6px 8px",
-          background: isDropOver ? "var(--bg-elevated)" : isSelected ? "var(--bg-tertiary)" : "transparent",
-          border: isDropOver ? "0.5px solid var(--accent)" : "none",
+          background: isOver ? "var(--bg-elevated)" : isSelected ? "var(--bg-tertiary)" : "transparent",
+          border: isOver ? "0.5px solid var(--accent)" : "none",
           borderRadius: "4px",
           color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
           fontSize: "13px",
