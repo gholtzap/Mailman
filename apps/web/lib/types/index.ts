@@ -38,11 +38,22 @@ export interface Paper {
   createdAt: Date;
 }
 
+export interface Folder {
+  _id?: ObjectId;
+  userId: ObjectId;
+  name: string;
+  color: string;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface ProcessedPaper {
   _id?: ObjectId;
   userId: ObjectId;
   paperId: ObjectId;
   arxivId: string;
+  folderId?: ObjectId;
   status: "pending" | "processing" | "completed" | "failed";
   generatedContent?: string;
   humanizedContent?: string;

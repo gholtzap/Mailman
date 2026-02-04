@@ -1,6 +1,6 @@
 import { Collection } from "mongodb";
 import { getDatabase } from "./mongodb";
-import { User, Paper, ProcessedPaper, ProcessingJob, RecurringSchedule } from "../types";
+import { User, Paper, ProcessedPaper, ProcessingJob, RecurringSchedule, Folder } from "../types";
 
 export async function getUsersCollection(): Promise<Collection<User>> {
   const db = await getDatabase();
@@ -25,4 +25,9 @@ export async function getProcessingJobsCollection(): Promise<Collection<Processi
 export async function getRecurringSchedulesCollection(): Promise<Collection<RecurringSchedule>> {
   const db = await getDatabase();
   return db.collection<RecurringSchedule>("recurring_schedules");
+}
+
+export async function getFoldersCollection(): Promise<Collection<Folder>> {
+  const db = await getDatabase();
+  return db.collection<Folder>("folders");
 }

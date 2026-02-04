@@ -73,10 +73,6 @@ export default function DashboardPage() {
   };
 
   const cancelJob = async (jobId: string) => {
-    if (!confirm("Are you sure you want to cancel this job?")) {
-      return;
-    }
-
     setCancelling(jobId);
     try {
       const res = await fetch(`/api/jobs/${jobId}`, {

@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { getUsersCollection, getProcessedPapersCollection, getPapersCollection } from "@/lib/db/collections";
 
 export async function GET(request: Request) {
@@ -18,6 +19,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const category = searchParams.get("category");
+  const folderId = searchParams.get("folderId");
+  const limit = Math.min(parseInt(searchParams.get("limit") || "100"), 200);
+  const offset = parseInt(searchParams.get("offset") || "0");
 
   const processedPapers = await getProcessedPapersCollection();
   const papers = await getPapersCollection();
@@ -26,10 +30,17 @@ export async function GET(request: Request) {
   if (status) {
     query.status = status;
   }
+  if (folderId === "unfiled") {
+    query.folderId = { $exists: false };
+  } else if (folderId) {
+    query.folderId = new ObjectId(folderId);
+  }
 
   const userPapers = await processedPapers
     .find(query)
     .sort({ createdAt: -1 })
+    .skip(offset)
+    .limit(limit)
     .toArray();
 
   const enrichedPapers = await Promise.all(

@@ -30,6 +30,7 @@ async function initializeDatabase() {
     await processedPapersCollection.createIndex({ status: 1 });
     await processedPapersCollection.createIndex({ createdAt: -1 });
     await processedPapersCollection.createIndex({ userId: 1, createdAt: -1 });
+    await processedPapersCollection.createIndex({ userId: 1, folderId: 1 });
     console.log("Created indexes for processed_papers collection");
 
     const processingJobsCollection = db.collection("processing_jobs");
@@ -48,6 +49,11 @@ async function initializeDatabase() {
     await recurringSchedulesCollection.createIndex({ status: 1, nextRunAt: 1 });
     await recurringSchedulesCollection.createIndex({ userId: 1, status: 1 });
     console.log("Created indexes for recurring_schedules collection");
+
+    const foldersCollection = db.collection("folders");
+    await foldersCollection.createIndex({ userId: 1, name: 1 }, { unique: true });
+    await foldersCollection.createIndex({ userId: 1, order: 1 });
+    console.log("Created indexes for folders collection");
 
     console.log("Database initialization complete");
   } catch (error) {
