@@ -31,6 +31,7 @@ export default function PaperCard({ paper, folderColor, onRetry, onFolderAssigne
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: paper._id });
   const [showFolderMenu, setShowFolderMenu] = useState(false);
   const [movingTo, setMovingTo] = useState<string | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   const moveToFolder = async (folderId: string | null) => {
     setMovingTo(folderId);
@@ -63,28 +64,22 @@ export default function PaperCard({ paper, folderColor, onRetry, onFolderAssigne
         href={`/papers/${paper._id}`}
         style={{
           display: "block",
-          background: "var(--bg-secondary)",
-          border: "0.5px solid var(--border-primary)",
+          background: isHovered ? "var(--bg-tertiary)" : "var(--bg-secondary)",
+          borderWidth: folderColor ? "0.5px 0.5px 0.5px 3px" : "0.5px",
+          borderStyle: "solid",
+          borderTopColor: isHovered ? "var(--border-secondary)" : "var(--border-primary)",
+          borderRightColor: isHovered ? "var(--border-secondary)" : "var(--border-primary)",
+          borderBottomColor: isHovered ? "var(--border-secondary)" : "var(--border-primary)",
+          borderLeftColor: folderColor || (isHovered ? "var(--border-secondary)" : "var(--border-primary)"),
           borderRadius: "6px",
           padding: "16px",
           textDecoration: "none",
           transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
           opacity: isDragging ? 0.4 : 1,
           cursor: isDragging ? "grabbing" : "grab",
-          borderLeft: folderColor ? `3px solid ${folderColor}` : undefined,
         }}
-        onMouseEnter={(e) => {
-          if (!isDragging) {
-            e.currentTarget.style.background = "var(--bg-tertiary)";
-            e.currentTarget.style.borderColor = "var(--border-secondary)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isDragging) {
-            e.currentTarget.style.background = "var(--bg-secondary)";
-            e.currentTarget.style.borderColor = "var(--border-primary)";
-          }
-        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div style={{ flex: 1 }}>
