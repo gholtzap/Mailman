@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboard();
@@ -88,6 +89,26 @@ export default function DashboardPage() {
       alert("An error occurred");
     } finally {
       setCancelling(null);
+    }
+  };
+
+  const retryJob = async (jobId: string) => {
+    setRetrying(jobId);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/retry`, {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        await fetchDashboard();
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to retry job");
+      }
+    } catch (error) {
+      alert("An error occurred");
+    } finally {
+      setRetrying(null);
     }
   };
 
@@ -258,36 +279,66 @@ export default function DashboardPage() {
                       {job.progress.completed} / {job.progress.total}
                     </div>
                     {(job.status === "queued" || job.status === "failed") && (
-                      <button
-                        onClick={() => cancelJob(job._id)}
-                        disabled={cancelling === job._id}
-                        style={{
-                          padding: '4px 8px',
-                          background: 'var(--error-muted)',
-                          border: '0.5px solid var(--error)',
-                          color: 'var(--error)',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 500,
-                          cursor: cancelling === job._id ? 'not-allowed' : 'pointer',
-                          opacity: cancelling === job._id ? 0.5 : 1,
-                          transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (cancelling !== job._id) {
-                            e.currentTarget.style.background = 'var(--error)';
-                            e.currentTarget.style.color = 'white';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (cancelling !== job._id) {
-                            e.currentTarget.style.background = 'var(--error-muted)';
-                            e.currentTarget.style.color = 'var(--error)';
-                          }
-                        }}
-                      >
-                        {cancelling === job._id ? "Cancelling..." : "Cancel"}
-                      </button>
+                      <>
+                        <button
+                          onClick={() => retryJob(job._id)}
+                          disabled={retrying === job._id}
+                          style={{
+                            padding: '4px 8px',
+                            background: 'var(--accent)',
+                            border: 'none',
+                            color: 'white',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            cursor: retrying === job._id ? 'not-allowed' : 'pointer',
+                            opacity: retrying === job._id ? 0.5 : 1,
+                            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (retrying !== job._id) {
+                              e.currentTarget.style.background = 'var(--accent-hover)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (retrying !== job._id) {
+                              e.currentTarget.style.background = 'var(--accent)';
+                            }
+                          }}
+                        >
+                          {retrying === job._id ? "Retrying..." : "Retry"}
+                        </button>
+                        <button
+                          onClick={() => cancelJob(job._id)}
+                          disabled={cancelling === job._id}
+                          style={{
+                            padding: '4px 8px',
+                            background: 'var(--error-muted)',
+                            border: '0.5px solid var(--error)',
+                            color: 'var(--error)',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            cursor: cancelling === job._id ? 'not-allowed' : 'pointer',
+                            opacity: cancelling === job._id ? 0.5 : 1,
+                            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (cancelling !== job._id) {
+                              e.currentTarget.style.background = 'var(--error)';
+                              e.currentTarget.style.color = 'white';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (cancelling !== job._id) {
+                              e.currentTarget.style.background = 'var(--error-muted)';
+                              e.currentTarget.style.color = 'var(--error)';
+                            }
+                          }}
+                        >
+                          {cancelling === job._id ? "Cancelling..." : "Cancel"}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

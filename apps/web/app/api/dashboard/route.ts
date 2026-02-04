@@ -57,7 +57,7 @@ export async function GET() {
       .toArray();
 
     const activeJobs = await jobs
-      .find({ userId: user._id, status: { $in: ["queued", "running"] } })
+      .find({ userId: user._id, status: { $in: ["queued", "running", "failed"] } })
       .sort({ createdAt: -1 })
       .toArray();
 
