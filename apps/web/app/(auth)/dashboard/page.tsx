@@ -17,6 +17,10 @@ interface Job {
   _id: string;
   type: string;
   status: string;
+  input: {
+    arxivUrl?: string;
+    categories?: string[];
+  };
   progress: {
     total: number;
     completed: number;
@@ -268,10 +272,15 @@ export default function DashboardPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                      {job.type === "single_paper" ? "Single Paper" : "Batch Scrape"}
+                      {job.type === "single_paper"
+                        ? (job.input.arxivUrl ? job.input.arxivUrl.split("/abs/")[1] : "Single Paper")
+                        : (job.input.categories ? job.input.categories.join(", ") : "Batch Scrape")}
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {job.status}
+                      <StatusBadge status={job.status} />
+                      <span style={{ marginLeft: '8px', fontVariantNumeric: 'tabular-nums' }}>
+                        {new Date(job.createdAt).toLocaleString()}
+                      </span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
