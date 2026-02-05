@@ -7,6 +7,7 @@ import { useDraggable } from "@dnd-kit/core";
 interface PaperCardProps {
   paper: {
     _id: string;
+    paperId: string;
     arxivId: string;
     status: string;
     folderId?: string;
@@ -115,7 +116,7 @@ export default function PaperCard({ paper, folderColor, onRetry, onFolderAssigne
             <StatusBadge status={paper.status} />
             {paper.status === "failed" && (
               <button
-                onClick={(e) => onRetry(paper._id, e)}
+                onClick={(e) => onRetry(paper.paperId, e)}
                 disabled={isRetrying}
                 style={{
                   marginTop: "8px",

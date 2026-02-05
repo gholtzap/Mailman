@@ -24,6 +24,7 @@ interface Folder {
 
 interface Paper {
   _id: string;
+  paperId: string;
   arxivId: string;
   status: string;
   folderId?: string;

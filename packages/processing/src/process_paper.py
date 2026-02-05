@@ -15,13 +15,9 @@ from pypdf import PdfReader
 load_dotenv()
 
 def fetch_pdf_content(url):
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        return response.content
-    except Exception as e:
-        print(f"Error fetching PDF: {e}")
-        sys.exit(1)
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+    return response.content
 
 def check_pdf_page_count(pdf_content, max_pages=25):
     """Check if PDF has more pages than desired limit."""
