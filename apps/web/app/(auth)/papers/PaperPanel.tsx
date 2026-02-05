@@ -41,12 +41,6 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
   const [paper, setPaper] = useState<PaperMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"summary" | "technical" | "abstract">("summary");
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -62,33 +56,17 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
   }, [paperId]);
 
   return (
-    <>
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0, 0, 0, 0.2)",
-          zIndex: 49,
-        }}
-      />
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: "min(480px, 100vw)",
-          background: "var(--bg-primary)",
-          borderLeft: "0.5px solid var(--border-primary)",
-          boxShadow: "-4px 0 24px rgba(0, 0, 0, 0.25)",
-          zIndex: 50,
-          display: "flex",
-          flexDirection: "column",
-          transform: visible ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 200ms cubic-bezier(0.25, 1, 0.5, 1)",
-        }}
-      >
+    <div
+      style={{
+        height: "100vh",
+        position: "sticky",
+        top: 0,
+        display: "flex",
+        flexDirection: "column",
+        borderLeft: "0.5px solid var(--border-primary)",
+        background: "var(--bg-primary)",
+      }}
+    >
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -287,7 +265,6 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
           )}
         </div>
       </div>
-    </>
   );
 }
 

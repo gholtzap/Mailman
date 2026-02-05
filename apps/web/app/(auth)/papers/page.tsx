@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { DndContext, closestCenter, pointerWithin, DragOverlay, CollisionDetection, DragStartEvent, DragEndEvent } from "@dnd-kit/core";
+import { DndContext, closestCenter, pointerWithin, DragOverlay, CollisionDetection, DragStartEvent, DragEndEvent, PointerSensor, useSensors, useSensor } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 const customCollisionDetection: CollisionDetection = (args) => {
@@ -50,6 +50,12 @@ export default function PapersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    })
+  );
 
   const fetchPapers = useCallback(async () => {
     const params = new URLSearchParams();
@@ -188,55 +194,14 @@ export default function PapersPage() {
   }
 
   return (
-    <>
     <DndContext
+      sensors={sensors}
       collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="p-4 md:p-8 max-w-screen-xl">
-        <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <h1 style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
-              Papers
-            </h1>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden"
-              style={{
-                background: "var(--bg-tertiary)",
-                border: "0.5px solid var(--border-primary)",
-                borderRadius: "4px",
-                color: "var(--text-secondary)",
-                fontSize: "13px",
-                cursor: "pointer",
-                padding: "4px 8px",
-                minHeight: "32px",
-              }}
-            >
-              Folders
-            </button>
-          </div>
-          <Link href="/papers/new" style={{
-            display: "inline-flex",
-            alignItems: "center",
-            padding: "8px 12px",
-            background: "var(--accent)",
-            color: "white",
-            borderRadius: "4px",
-            fontSize: "13px",
-            fontWeight: 500,
-            textDecoration: "none",
-            transition: "background 150ms cubic-bezier(0.25, 1, 0.5, 1)",
-            minHeight: "44px",
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = "var(--accent-hover)"}
-          onMouseLeave={(e) => e.currentTarget.style.background = "var(--accent)"}>
-            New Paper
-          </Link>
-        </div>
-
+      <div className="p-4 md:p-8">
         <div style={{ display: "flex", gap: "24px" }}>
           <div className="hidden md:block">
             <SortableContext items={folders.map((f) => f._id)} strategy={verticalListSortingStrategy}>
@@ -289,6 +254,44 @@ export default function PapersPage() {
           )}
 
           <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+              <h1 style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
+                Papers
+              </h1>
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="md:hidden"
+                style={{
+                  background: "var(--bg-tertiary)",
+                  border: "0.5px solid var(--border-primary)",
+                  borderRadius: "4px",
+                  color: "var(--text-secondary)",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  minHeight: "32px",
+                }}
+              >
+                Folders
+              </button>
+              <Link href="/papers/new" style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "6px 10px",
+                background: "var(--accent)",
+                color: "white",
+                borderRadius: "4px",
+                fontSize: "13px",
+                fontWeight: 500,
+                textDecoration: "none",
+                transition: "background 150ms cubic-bezier(0.25, 1, 0.5, 1)",
+                marginLeft: "auto",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--accent-hover)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "var(--accent)"}>
+                New Paper
+              </Link>
+            </div>
             <div style={{ marginBottom: "24px" }}>
               <div className="flex gap-2 flex-wrap">
                 {["all", "pending", "processing", "completed", "failed"].map((status) => (
@@ -364,6 +367,17 @@ export default function PapersPage() {
               </div>
             )}
           </div>
+
+          <div style={{
+            width: selectedPaperId ? "420px" : "0px",
+            flexShrink: 0,
+            overflow: "hidden",
+            transition: "width 250ms cubic-bezier(0.25, 1, 0.5, 1)",
+          }}>
+            {selectedPaperId && (
+              <PaperPanel paperId={selectedPaperId} onClose={() => setSelectedPaperId(null)} />
+            )}
+          </div>
         </div>
       </div>
       <DragOverlay dropAnimation={null}>
@@ -384,9 +398,5 @@ export default function PapersPage() {
         ) : null}
       </DragOverlay>
     </DndContext>
-    {selectedPaperId && (
-      <PaperPanel paperId={selectedPaperId} onClose={() => setSelectedPaperId(null)} />
-    )}
-    </>
   );
 }
