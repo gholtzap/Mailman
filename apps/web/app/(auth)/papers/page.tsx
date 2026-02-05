@@ -14,6 +14,7 @@ const customCollisionDetection: CollisionDetection = (args) => {
 };
 import FolderSidebar from "./FolderSidebar";
 import PaperCard from "./PaperCard";
+import PaperPanel from "./PaperPanel";
 
 interface Folder {
   _id: string;
@@ -48,6 +49,7 @@ export default function PapersPage() {
   const [retrying, setRetrying] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
 
   const fetchPapers = useCallback(async () => {
     const params = new URLSearchParams();
@@ -73,6 +75,15 @@ export default function PapersPage() {
   useEffect(() => {
     fetchPapers();
   }, [fetchPapers]);
+
+  useEffect(() => {
+    if (!selectedPaperId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedPaperId(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedPaperId]);
 
   const retryPaper = async (paperId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -177,6 +188,7 @@ export default function PapersPage() {
   }
 
   return (
+    <>
     <DndContext
       collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
@@ -334,6 +346,7 @@ export default function PapersPage() {
                     paper={paper}
                     folderColor={getFolderColor(paper)}
                     onRetry={retryPaper}
+                    onSelect={(id) => setSelectedPaperId(id)}
                     onFolderAssigned={(paperId, folderId) => {
                       setPapers((prev) =>
                         prev.map((p) =>
@@ -371,5 +384,9 @@ export default function PapersPage() {
         ) : null}
       </DragOverlay>
     </DndContext>
+    {selectedPaperId && (
+      <PaperPanel paperId={selectedPaperId} onClose={() => setSelectedPaperId(null)} />
+    )}
+    </>
   );
 }

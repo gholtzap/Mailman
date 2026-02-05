@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useDraggable } from "@dnd-kit/core";
 
 interface PaperCardProps {
@@ -24,11 +23,12 @@ interface PaperCardProps {
   folderColor?: string;
   onRetry: (paperId: string, e: React.MouseEvent) => void;
   onFolderAssigned: (paperId: string, folderId: string | null) => void;
+  onSelect: (paperId: string) => void;
   isRetrying: boolean;
   folders: { _id: string; name: string; color: string }[];
 }
 
-export default function PaperCard({ paper, folderColor, onRetry, onFolderAssigned, isRetrying, folders }: PaperCardProps) {
+export default function PaperCard({ paper, folderColor, onRetry, onFolderAssigned, onSelect, isRetrying, folders }: PaperCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: paper._id });
   const [showFolderMenu, setShowFolderMenu] = useState(false);
   const [movingTo, setMovingTo] = useState<string | null>(null);
@@ -61,8 +61,16 @@ export default function PaperCard({ paper, folderColor, onRetry, onFolderAssigne
           touchAction: "manipulation",
         }}
       >
-      <Link
-        href={`/papers/${paper._id}`}
+      <div
+        onClick={() => onSelect(paper._id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect(paper._id);
+          }
+        }}
+        role="button"
+        tabIndex={0}
         style={{
           display: "block",
           background: isHovered ? "var(--bg-tertiary)" : "var(--bg-secondary)",
@@ -74,10 +82,9 @@ export default function PaperCard({ paper, folderColor, onRetry, onFolderAssigne
           borderLeftColor: folderColor || (isHovered ? "var(--border-secondary)" : "var(--border-primary)"),
           borderRadius: "6px",
           padding: "16px",
-          textDecoration: "none",
           transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
           opacity: isDragging ? 0.4 : 1,
-          cursor: isDragging ? "grabbing" : "grab",
+          cursor: isDragging ? "grabbing" : "pointer",
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -153,7 +160,7 @@ export default function PaperCard({ paper, folderColor, onRetry, onFolderAssigne
             </div>
           </div>
         </div>
-      </Link>
+      </div>
       </div>
       <button
         onClick={(e) => {
