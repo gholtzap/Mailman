@@ -1,9 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ObjectId } from "mongodb";
 import { getUsersCollection, getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { paperProcessingQueue } from "@/lib/queue";
 import { createLogger } from "@/lib/logging";
+import { processSinglePaper } from "@/lib/processing/single";
+
+export const maxDuration = 300;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -124,16 +127,16 @@ export async function POST(
         { $set: { progress: { total: 1, completed: 0 } } }
       );
 
-      await paperProcessingQueue.add("process-single-paper", {
-        userId: userId,
-        paperId: paper._id!.toString(),
-        arxivId: paper.arxivId,
-        encryptedApiKey: user.apiKey || null,
-        jobId: id,
-        processedPaperId: processedPaper._id!.toString(),
+      after(async () => {
+        await processSinglePaper({
+          processedPaperId: processedPaper._id!.toString(),
+          jobId: id,
+          arxivId: paper.arxivId,
+          encryptedApiKey: user.apiKey || null,
+        });
       });
 
-      log.info({ jobId: id, arxivId }, "Single paper retry queued");
+      log.info({ jobId: id, arxivId }, "Single paper retry triggered");
     } else if (job.type === "batch_scrape") {
       const categories = job.input.categories;
       const papersPerCategory = job.input.papersPerCategory;

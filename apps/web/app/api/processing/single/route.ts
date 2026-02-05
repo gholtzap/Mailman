@@ -1,10 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { ObjectId } from "mongodb";
 import { getUsersCollection, getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
-import { paperProcessingQueue } from "@/lib/queue";
 import { getClient } from "@/lib/db/mongodb";
 import { createLogger } from "@/lib/logging";
+import { processSinglePaper } from "@/lib/processing/single";
+
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -121,15 +123,15 @@ export async function POST(request: Request) {
       await session.endSession();
     }
 
-    await paperProcessingQueue.add("process-single-paper", {
-      userId: userId,
-      paperId: paperId,
-      arxivId: paper.arxivId,
-      encryptedApiKey: user.apiKey || null,
-      jobId: jobId.toString(),
-      processedPaperId: processedPaperId,
+    after(async () => {
+      await processSinglePaper({
+        processedPaperId,
+        jobId: jobId.toString(),
+        arxivId: paper.arxivId,
+        encryptedApiKey: user.apiKey || null,
+      });
     });
-    log.info({ jobId }, "Job added to queue successfully");
+    log.info({ jobId }, "Processing triggered");
 
     return NextResponse.json({ success: true, jobId: jobId });
   } catch (error) {
