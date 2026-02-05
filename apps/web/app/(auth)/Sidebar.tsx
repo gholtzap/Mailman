@@ -8,6 +8,7 @@ import { useState } from "react";
 export function Sidebar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <>
@@ -24,13 +25,12 @@ export function Sidebar() {
             border: '0.5px solid var(--border-primary)',
             borderRadius: '4px',
             cursor: 'pointer',
-            display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             width: '36px',
             height: '36px'
           }}
-          className="md:hidden"
+          className="flex md:hidden"
           aria-label="Toggle menu"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ color: 'var(--text-primary)' }}>
@@ -52,33 +52,97 @@ export function Sidebar() {
         />
       )}
 
+      {collapsed && (
+        <button
+          onClick={() => setCollapsed(false)}
+          className="hidden md:flex"
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '8px',
+            zIndex: 50,
+            width: '28px',
+            height: '28px',
+            background: 'var(--bg-secondary)',
+            border: '0.5px solid var(--border-primary)',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-secondary)',
+          }}
+          aria-label="Expand sidebar"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-tertiary)';
+            e.currentTarget.style.color = 'var(--text-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--bg-secondary)';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
+
       <aside
-        className="fixed md:relative top-0 md:top-auto h-screen md:h-auto z-50 md:z-auto md:left-0"
+        className={`fixed md:relative top-0 md:top-auto h-screen md:h-auto z-50 md:z-auto md:left-0 ${mobileMenuOpen ? 'left-0' : '-left-[200px]'}`}
         style={{
-          width: '200px',
+          width: collapsed ? '0px' : '200px',
           background: 'var(--bg-secondary)',
           borderRight: '0.5px solid var(--border-primary)',
           display: 'flex',
           flexDirection: 'column',
           padding: '16px 0',
-          left: mobileMenuOpen ? 0 : '-200px',
-          transition: 'left 200ms cubic-bezier(0.25, 1, 0.5, 1)'
+          transition: 'left 200ms cubic-bezier(0.25, 1, 0.5, 1), width 200ms cubic-bezier(0.25, 1, 0.5, 1)',
+          overflow: 'hidden'
         }}
       >
-        <div style={{ padding: '0 16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Image
-            src="/mailman-logo.png"
-            alt="Mailman"
-            width={24}
-            height={24}
-            priority
-          />
-          <h1 style={{
-            fontSize: '13px',
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-            color: 'var(--text-primary)'
-          }}>Mailman</h1>
+        <div style={{ padding: '0 16px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Image
+              src="/mailman-logo.png"
+              alt="Mailman"
+              width={24}
+              height={24}
+              priority
+            />
+            <h1 style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              letterSpacing: '-0.01em',
+              color: 'var(--text-primary)'
+            }}>Mailman</h1>
+          </div>
+          <button
+            onClick={() => setCollapsed(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '4px',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            aria-label="Collapse sidebar"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--bg-tertiary)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'none';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3L6 8l4 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
 
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 8px' }}>
