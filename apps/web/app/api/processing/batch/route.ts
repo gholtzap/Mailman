@@ -40,12 +40,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const { categories: providedCategories, papersPerCategory, keywords, keywordMatchMode } = body;
+    const { categories: providedCategories, papersPerCategory, keywords, keywordMatchMode, skipAI } = body;
     const categories = providedCategories && providedCategories.length > 0
       ? providedCategories
       : user.settings.defaultCategories;
 
-    log.debug({ categories, papersPerCategory, keywords, keywordMatchMode }, "Processing parameters");
+    log.debug({ categories, papersPerCategory, keywords, keywordMatchMode, skipAI }, "Processing parameters");
 
     if (!categories || categories.length === 0) {
       log.warn("No categories available");
@@ -77,6 +77,10 @@ export async function POST(request: Request) {
       jobInput.keywordMatchMode = keywordMatchMode;
     }
 
+    if (skipAI !== undefined) {
+      jobInput.skipAI = skipAI;
+    }
+
     const job = await jobs.insertOne({
       userId: user._id!,
       type: "batch_scrape",
@@ -106,6 +110,10 @@ export async function POST(request: Request) {
 
     if (keywordMatchMode !== undefined) {
       queueData.keywordMatchMode = keywordMatchMode;
+    }
+
+    if (skipAI !== undefined) {
+      queueData.skipAI = skipAI;
     }
 
     await paperProcessingQueue.add("batch-scrape", queueData);

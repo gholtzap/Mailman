@@ -15,19 +15,34 @@ interface ProcessSinglePaperParams {
   jobId: string;
   arxivId: string;
   encryptedApiKey: { encryptedValue: string; iv: string; authTag: string } | null;
+  skipAI?: boolean;
 }
 
 const MAX_PAGES = 50;
 
 async function getPdfPageCount(buffer: Buffer): Promise<number> {
-  const pdfjsLib = await import("pdfjs-dist");
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
+  const pdf = await pdfjsLib.getDocument({
+    data: new Uint8Array(buffer),
+    useSystemFonts: true,
+    standardFontDataUrl: undefined,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+  }).promise;
   return pdf.numPages;
 }
 
 async function extractRawText(buffer: Buffer): Promise<string> {
-  const pdfjsLib = await import("pdfjs-dist");
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
+  const pdf = await pdfjsLib.getDocument({
+    data: new Uint8Array(buffer),
+    useSystemFonts: true,
+    standardFontDataUrl: undefined,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+  }).promise;
 
   const pages: string[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -47,6 +62,7 @@ export async function processSinglePaper({
   jobId,
   arxivId,
   encryptedApiKey,
+  skipAI,
 }: ProcessSinglePaperParams) {
   const log = createLogger({ route: "process-single-paper", arxivId });
 
@@ -70,7 +86,7 @@ export async function processSinglePaper({
       throw new Error(`Paper exceeds ${MAX_PAGES}-page limit (has ${pageCount} pages)`);
     }
 
-    if (apiKey) {
+    if (apiKey && !skipAI) {
       const client = new Anthropic({ apiKey });
 
       const opusResponse = await client.messages.create({

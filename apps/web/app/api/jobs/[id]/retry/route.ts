@@ -133,6 +133,7 @@ export async function POST(
           jobId: id,
           arxivId: paper.arxivId,
           encryptedApiKey: user.apiKey || null,
+          skipAI: job.input.skipAI ?? false,
         });
       });
 

@@ -54,6 +54,7 @@ export interface ProcessedPaper {
   paperId: ObjectId;
   arxivId: string;
   folderId?: ObjectId;
+  skipAI?: boolean;
   status: "pending" | "processing" | "completed" | "failed";
   generatedContent?: string;
   humanizedContent?: string;
@@ -80,6 +81,7 @@ export interface ProcessingJob {
     papersPerCategory?: number;
     keywords?: string[];
     keywordMatchMode?: "any" | "all";
+    skipAI?: boolean;
   };
   progress: {
     total: number;

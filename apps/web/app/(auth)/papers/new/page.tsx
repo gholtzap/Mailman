@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function NewPaperPage() {
   const [arxivUrl, setArxivUrl] = useState("");
+  const [skipAI, setSkipAI] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function NewPaperPage() {
         const processRes = await fetch("/api/processing/single", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paperId: data.paper._id }),
+          body: JSON.stringify({ paperId: data.paper._id, skipAI }),
         });
 
         if (processRes.ok) {
@@ -80,6 +81,31 @@ export default function NewPaperPage() {
             onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
             onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
           />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="checkbox"
+            id="skipAI"
+            checked={skipAI}
+            onChange={(e) => setSkipAI(e.target.checked)}
+            style={{
+              width: '16px',
+              height: '16px',
+              cursor: 'pointer',
+              accentColor: 'var(--accent)',
+            }}
+          />
+          <label
+            htmlFor="skipAI"
+            style={{
+              fontSize: '13px',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer'
+            }}
+          >
+            Skip AI processing (extract raw text only, no cost)
+          </label>
         </div>
 
         <button

@@ -21,8 +21,8 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { paperId } = body;
-    log.debug({ paperId }, "Processing paper");
+    const { paperId, skipAI: skipAIParam } = body;
+    log.debug({ paperId, skipAI: skipAIParam }, "Processing paper");
 
     const users = await getUsersCollection();
     const user = await users.findOne({ clerkId: userId });
@@ -63,6 +63,8 @@ export async function POST(request: Request) {
       log.info({ status: existing.status }, "Paper exists but will be reprocessed");
     }
 
+    const skipAI = skipAIParam ?? existing?.skipAI ?? false;
+
     const client = await getClient();
     const session = client.startSession();
 
@@ -79,6 +81,7 @@ export async function POST(request: Request) {
             {
               $set: {
                 status: 'pending',
+                skipAI,
                 updatedAt: new Date()
               },
               $unset: {
@@ -94,6 +97,7 @@ export async function POST(request: Request) {
             userId: user._id!,
             paperId: paper._id!,
             arxivId: paper.arxivId,
+            skipAI,
             status: "pending",
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -108,6 +112,7 @@ export async function POST(request: Request) {
           status: "queued",
           input: {
             arxivUrl: `https://arxiv.org/abs/${paper.arxivId}`,
+            skipAI: skipAI || false,
           },
           progress: {
             total: 1,
@@ -129,6 +134,7 @@ export async function POST(request: Request) {
         jobId: jobId.toString(),
         arxivId: paper.arxivId,
         encryptedApiKey: user.apiKey || null,
+        skipAI: skipAI || false,
       });
     });
     log.info({ jobId }, "Processing triggered");

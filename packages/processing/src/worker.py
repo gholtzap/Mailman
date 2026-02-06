@@ -105,6 +105,7 @@ async def process_batch_scrape(job):
         max_pages = job_data["maxPagesPerPaper"]
         keywords = job_data.get("keywords", [])
         keyword_match_mode = job_data.get("keywordMatchMode", "any")
+        skip_ai = job_data.get("skipAI", False)
 
         total_papers = 0
         filtered_count = 0
@@ -146,7 +147,8 @@ async def process_batch_scrape(job):
                         "processedPaperId": str(proc_result.inserted_id),
                         "arxivId": paper_data["arxivId"],
                         "encryptedApiKey": job_data.get("encryptedApiKey"),
-                        "jobId": job_data["jobId"]
+                        "jobId": job_data["jobId"],
+                        "skipAI": skip_ai
                     })
 
                     total_papers += 1
@@ -206,6 +208,7 @@ async def process_single_paper(job):
 
     try:
         encrypted_api_key = job_data.get("encryptedApiKey")
+        skip_ai = job_data.get("skipAI", False)
 
         if encrypted_api_key:
             api_key = decrypt_api_key(encrypted_api_key)
@@ -223,7 +226,7 @@ async def process_single_paper(job):
         pdf_url = f"https://arxiv.org/pdf/{job_data['arxivId']}.pdf"
         prompts_dir = os.path.join(os.path.dirname(__file__), "..", "prompts")
 
-        if api_key:
+        if api_key and not skip_ai:
             generated_text, page_count, opus_in, opus_out = generate_text_from_paper(
                 pdf_url,
                 api_key,

@@ -18,6 +18,7 @@ const POPULAR_CATEGORIES = [
 export default function BatchScrapePage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [papersPerCategory, setPapersPerCategory] = useState(5);
+  const [skipAI, setSkipAI] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
@@ -48,6 +49,7 @@ export default function BatchScrapePage() {
         body: JSON.stringify({
           categories: selectedCategories,
           papersPerCategory,
+          skipAI,
         }),
       });
 
@@ -93,8 +95,9 @@ export default function BatchScrapePage() {
         marginBottom: '24px'
       }}>
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
-          This will fetch recent papers from the selected categories and queue them for processing.
-          Each paper will use your Anthropic API credits.
+          {skipAI
+            ? 'This will fetch recent papers from the selected categories and extract raw text only (no AI processing, no cost).'
+            : 'This will fetch recent papers from the selected categories and queue them for processing. Each paper will use your Anthropic API credits.'}
         </p>
       </div>
 
@@ -180,6 +183,31 @@ export default function BatchScrapePage() {
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px', fontFamily: 'var(--font-geist-mono)' }}>
             Total papers to process: {selectedCategories.length * papersPerCategory}
           </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="checkbox"
+            id="skipAI"
+            checked={skipAI}
+            onChange={(e) => setSkipAI(e.target.checked)}
+            style={{
+              width: '16px',
+              height: '16px',
+              cursor: 'pointer',
+              accentColor: 'var(--accent)',
+            }}
+          />
+          <label
+            htmlFor="skipAI"
+            style={{
+              fontSize: '13px',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer'
+            }}
+          >
+            Skip AI processing (extract raw text only, no cost)
+          </label>
         </div>
 
         <button
