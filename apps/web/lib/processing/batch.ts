@@ -5,6 +5,7 @@ import {
   getProcessingJobsCollection,
 } from "@/lib/db/collections";
 import { processSinglePaper } from "@/lib/processing/single";
+import { sendBatchCompletionEmail } from "@/lib/email/send-batch-completion";
 import { createLogger } from "@/lib/logging";
 
 interface ProcessBatchScrapeParams {
@@ -16,6 +17,8 @@ interface ProcessBatchScrapeParams {
   keywordMatchMode?: "any" | "all";
   encryptedApiKey: { encryptedValue: string; iv: string; authTag: string } | null;
   skipAI?: boolean;
+  notificationEmail?: string;
+  scheduleName?: string;
 }
 
 interface ArxivPaper {
@@ -124,6 +127,8 @@ export async function processBatchScrape({
   keywordMatchMode = "any",
   encryptedApiKey,
   skipAI,
+  notificationEmail,
+  scheduleName,
 }: ProcessBatchScrapeParams) {
   const log = createLogger({ route: "batch-scrape", jobId });
 
@@ -213,11 +218,13 @@ export async function processBatchScrape({
       }
     }
 
+    const finalStatus = totalPapersQueued > 0 ? "completed" : "failed";
+
     await jobs.updateOne(
       { _id: new ObjectId(jobId) },
       {
         $set: {
-          status: totalPapersQueued > 0 ? "completed" : "failed",
+          status: finalStatus,
           "progress.total": totalPapersQueued,
           updatedAt: new Date(),
         },
@@ -228,6 +235,19 @@ export async function processBatchScrape({
       { totalPapersQueued, filteredCount },
       "Batch scrape completed"
     );
+
+    if (finalStatus === "completed" && notificationEmail) {
+      try {
+        await sendBatchCompletionEmail({
+          jobId,
+          notificationEmail,
+          scheduleName,
+          categories,
+        });
+      } catch (emailError) {
+        log.error({ err: emailError }, "Failed to send batch completion email");
+      }
+    }
   } catch (error) {
     log.error({ err: error }, "Batch scrape failed");
 

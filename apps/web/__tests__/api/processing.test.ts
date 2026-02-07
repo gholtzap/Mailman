@@ -19,6 +19,10 @@ jest.mock('@/lib/processing/batch', () => ({
   processBatchScrape: (...args: any[]) => mockProcessBatchScrape(...args),
 }))
 
+jest.mock('@/lib/email/send-batch-completion', () => ({
+  sendBatchCompletionEmail: jest.fn().mockResolvedValue({ sent: true, paperCount: 1 }),
+}))
+
 jest.mock('next/server', () => ({
   __esModule: true,
   NextResponse: {
@@ -329,6 +333,7 @@ describe('/api/processing', () => {
           keywords: ['transformer'],
           keywordMatchMode: 'any',
           encryptedApiKey: user.apiKey,
+          notificationEmail: user.email,
         })
       )
 

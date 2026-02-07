@@ -8,15 +8,9 @@ import {
 } from '../utils/helpers'
 import { MongoClient } from 'mongodb'
 
-const mockSend = jest.fn().mockResolvedValue({ id: 'email_123' })
-jest.mock('@/lib/email/client', () => ({
-  getResendClient: () => ({ emails: { send: mockSend } }),
-  FROM_EMAIL: 'test@example.com',
-}))
-
-jest.mock('@/lib/email/templates', () => ({
-  generateBatchCompletionEmail: jest.fn().mockReturnValue('<html>email</html>'),
-  generateBatchCompletionTextEmail: jest.fn().mockReturnValue('text email'),
+const mockSendBatchCompletionEmail = jest.fn().mockResolvedValue({ sent: true, paperCount: 1 })
+jest.mock('@/lib/email/send-batch-completion', () => ({
+  sendBatchCompletionEmail: (...args: any[]) => mockSendBatchCompletionEmail(...args),
 }))
 
 import { POST } from '@/app/api/email/batch-completion/route'
@@ -35,7 +29,8 @@ describe('POST /api/email/batch-completion', () => {
 
   beforeEach(async () => {
     await clearDatabase()
-    mockSend.mockClear()
+    mockSendBatchCompletionEmail.mockClear()
+    mockSendBatchCompletionEmail.mockResolvedValue({ sent: true, paperCount: 1 })
   })
 
   function makeRequest(body: any) {
@@ -88,6 +83,8 @@ describe('POST /api/email/batch-completion', () => {
   })
 
   it('should return 404 if no papers found', async () => {
+    mockSendBatchCompletionEmail.mockResolvedValue({ sent: false, paperCount: 0 })
+
     const user = await createTestUser(client)
     const schedule = await createTestSchedule(client, user._id!.toString(), {
       email: 'notify@example.com',
@@ -117,7 +114,6 @@ describe('POST /api/email/batch-completion', () => {
       name: 'AI Papers',
     })
 
-    const jobCreatedAt = new Date()
     const job = await createTestProcessingJob(client, user._id!.toString(), {
       status: 'completed',
       type: 'batch_scrape',
@@ -125,13 +121,6 @@ describe('POST /api/email/batch-completion', () => {
         categories: ['cs.AI'],
         papersPerCategory: 5,
       },
-      createdAt: jobCreatedAt,
-    })
-
-    const paper = await createTestPaper(client, { arxivId: '2501.55555' })
-    await createTestProcessedPaper(client, user._id!.toString(), paper._id!.toString(), {
-      status: 'completed',
-      createdAt: new Date(jobCreatedAt.getTime() + 1000),
     })
 
     const response = await POST(
@@ -144,11 +133,12 @@ describe('POST /api/email/batch-completion', () => {
     expect(data.emailSent).toBe(true)
     expect(data.recipientEmail).toBe('notify@example.com')
     expect(data.paperCount).toBe(1)
-    expect(mockSend).toHaveBeenCalledTimes(1)
-    expect(mockSend).toHaveBeenCalledWith(
+    expect(mockSendBatchCompletionEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: 'notify@example.com',
-        from: 'test@example.com',
+        jobId: job._id!.toString(),
+        notificationEmail: 'notify@example.com',
+        scheduleName: 'AI Papers',
+        categories: ['cs.AI'],
       })
     )
   })

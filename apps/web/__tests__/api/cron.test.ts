@@ -10,6 +10,10 @@ jest.mock('@/lib/processing/batch', () => ({
   processBatchScrape: (...args: any[]) => mockProcessBatchScrape(...args),
 }))
 
+jest.mock('@/lib/email/send-batch-completion', () => ({
+  sendBatchCompletionEmail: jest.fn().mockResolvedValue({ sent: true, paperCount: 1 }),
+}))
+
 jest.mock('next/server', () => ({
   __esModule: true,
   NextResponse: {
@@ -158,6 +162,8 @@ describe('/api/cron/process-schedules', () => {
         expect.objectContaining({
           categories: ['cs.AI'],
           papersPerCategory: 3,
+          notificationEmail: 'test@example.com',
+          scheduleName: 'Test Schedule',
         })
       )
 

@@ -107,6 +107,7 @@ export async function POST(request: Request) {
         keywordMatchMode,
         encryptedApiKey: user.apiKey || null,
         skipAI,
+        notificationEmail: user.email,
       })
     );
     log.info("Batch processing triggered");

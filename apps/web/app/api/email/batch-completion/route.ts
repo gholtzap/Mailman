@@ -3,14 +3,8 @@ import { ObjectId } from "mongodb";
 import {
   getProcessingJobsCollection,
   getRecurringSchedulesCollection,
-  getProcessedPapersCollection,
-  getPapersCollection,
 } from "@/lib/db/collections";
-import { getResendClient, FROM_EMAIL } from "@/lib/email/client";
-import {
-  generateBatchCompletionEmail,
-  generateBatchCompletionTextEmail,
-} from "@/lib/email/templates";
+import { sendBatchCompletionEmail } from "@/lib/email/send-batch-completion";
 import { createLogger } from "@/lib/logging";
 
 export async function POST(request: Request) {
@@ -58,7 +52,10 @@ export async function POST(request: Request) {
       if (schedule) {
         notificationEmail = schedule.email;
         scheduleName = schedule.name;
-        log.debug({ scheduleId, scheduleName, notificationEmail }, "Found schedule");
+        log.debug(
+          { scheduleId, scheduleName, notificationEmail },
+          "Found schedule"
+        );
       }
     }
 
@@ -70,41 +67,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const processedPapers = await getProcessedPapersCollection();
-    const papers = await getPapersCollection();
+    const result = await sendBatchCompletionEmail({
+      jobId,
+      notificationEmail,
+      scheduleName,
+      categories: job.input.categories || [],
+    });
 
-    const jobProcessedPapers = await processedPapers
-      .find({
-        userId: job.userId,
-        status: "completed",
-        createdAt: { $gte: job.createdAt },
-      })
-      .sort({ createdAt: -1 })
-      .limit(job.input.papersPerCategory! * job.input.categories!.length)
-      .toArray();
-
-    log.debug({ paperCount: jobProcessedPapers.length }, "Found processed papers for job");
-
-    const paperSummaries = await Promise.all(
-      jobProcessedPapers.map(async (pp) => {
-        const paper = await papers.findOne({ _id: pp.paperId });
-        if (!paper) return null;
-
-        return {
-          title: paper.title,
-          arxivId: paper.arxivId,
-          summary:
-            pp.humanizedContent?.substring(0, 300) ||
-            pp.generatedContent?.substring(0, 300) ||
-            "Summary not available",
-          url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/papers/${pp._id}`,
-        };
-      })
-    );
-
-    const validPaperSummaries = paperSummaries.filter((p) => p !== null);
-
-    if (validPaperSummaries.length === 0) {
+    if (!result.sent) {
       log.warn({ jobId }, "No papers found for job");
       return NextResponse.json(
         { error: "No papers found for this job" },
@@ -112,37 +82,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const htmlEmail = generateBatchCompletionEmail(
-      scheduleName,
-      validPaperSummaries,
-      job.input.categories || []
-    );
-
-    const textEmail = generateBatchCompletionTextEmail(
-      scheduleName,
-      validPaperSummaries,
-      job.input.categories || []
-    );
-
-    const resend = getResendClient();
-
-    log.info({ to: notificationEmail, paperCount: validPaperSummaries.length }, "Sending batch completion email");
-
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: notificationEmail,
-      subject: `${validPaperSummaries.length} Paper Summaries Ready - ${scheduleName}`,
-      html: htmlEmail,
-      text: textEmail,
-    });
-
-    log.info({ recipientEmail: notificationEmail, paperCount: validPaperSummaries.length }, "Email sent successfully");
-
     return NextResponse.json({
       success: true,
       emailSent: true,
       recipientEmail: notificationEmail,
-      paperCount: validPaperSummaries.length,
+      paperCount: result.paperCount,
     });
   } catch (error) {
     log.error({ err: error }, "Failed to send batch completion email");

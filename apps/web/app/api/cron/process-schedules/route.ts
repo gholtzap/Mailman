@@ -97,6 +97,8 @@ export async function GET(request: Request) {
             keywords: schedule.keywords,
             keywordMatchMode: schedule.keywordMatchMode,
             encryptedApiKey: user.apiKey || null,
+            notificationEmail: schedule.email || user.email,
+            scheduleName: schedule.name,
           })
         );
 
