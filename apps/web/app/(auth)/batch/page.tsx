@@ -1,19 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ARXIV_CATEGORIES, POPULAR_CATEGORY_IDS } from "@/lib/arxiv-categories";
 
-const POPULAR_CATEGORIES = [
-  { id: "cs.AI", name: "Artificial Intelligence" },
-  { id: "cs.LG", name: "Machine Learning" },
-  { id: "cs.CV", name: "Computer Vision" },
-  { id: "cs.CL", name: "Computation and Language" },
-  { id: "cs.RO", name: "Robotics" },
-  { id: "cs.CR", name: "Cryptography and Security" },
-  { id: "cs.DB", name: "Databases" },
-  { id: "cs.SE", name: "Software Engineering" },
-];
+const POPULAR_CATEGORIES = ARXIV_CATEGORIES.flatMap(section =>
+  section.categories.filter(cat => POPULAR_CATEGORY_IDS.has(cat.id))
+);
 
 export default function BatchScrapePage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -21,6 +15,7 @@ export default function BatchScrapePage() {
   const [skipAI, setSkipAI] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const router = useRouter();
 
   const toggleCategory = (categoryId: string) => {
@@ -30,6 +25,18 @@ export default function BatchScrapePage() {
         : [...prev, categoryId]
     );
   };
+
+  const filteredCategories = useMemo(() =>
+    ARXIV_CATEGORIES.map(section => ({
+      ...section,
+      categories: section.categories.filter(cat => {
+        if (!categoryFilter) return true;
+        const filter = categoryFilter.toLowerCase();
+        return cat.id.toLowerCase().includes(filter) || cat.name.toLowerCase().includes(filter);
+      })
+    })).filter(section => section.categories.length > 0),
+    [categoryFilter]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,6 +153,102 @@ export default function BatchScrapePage() {
                 </button>
               );
             })}
+          </div>
+
+          <input
+            type="text"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            placeholder="Search all categories..."
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: 'var(--bg-secondary)',
+              border: '0.5px solid var(--border-primary)',
+              borderRadius: '6px',
+              color: 'var(--text-primary)',
+              fontSize: '13px',
+              marginTop: '12px',
+              outline: 'none'
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+          />
+
+          <div style={{
+            maxHeight: '300px',
+            overflowY: 'auto',
+            marginTop: '8px',
+            padding: '12px',
+            background: 'var(--bg-secondary)',
+            border: '0.5px solid var(--border-primary)',
+            borderRadius: '6px'
+          }}>
+            {filteredCategories.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                No categories match your search
+              </div>
+            ) : (
+              filteredCategories.map(section => (
+                <div key={section.section} style={{ marginBottom: '16px' }}>
+                  <div style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: 'var(--text-secondary)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '8px',
+                    paddingBottom: '4px',
+                    borderBottom: '0.5px solid var(--border-primary)'
+                  }}>
+                    {section.section}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {section.categories.map(category => (
+                      <label
+                        key={category.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'var(--bg-tertiary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(category.id)}
+                          onChange={() => toggleCategory(category.id)}
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            cursor: 'pointer',
+                            accentColor: 'var(--accent)',
+                            flexShrink: 0
+                          }}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-geist-mono)' }}>
+                            {category.id}
+                          </span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                            {category.name}
+                          </span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
