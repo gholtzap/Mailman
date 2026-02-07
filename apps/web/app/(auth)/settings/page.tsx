@@ -8,6 +8,9 @@ export default function SettingsPage() {
   const [apiKeyValid, setApiKeyValid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [notificationEmail, setNotificationEmail] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
 
   const [defaultCategories, setDefaultCategories] = useState<string[]>([]);
   const [maxPagesPerPaper, setMaxPagesPerPaper] = useState(50);
@@ -23,6 +26,7 @@ export default function SettingsPage() {
 
     setHasApiKey(data.hasApiKey);
     setApiKeyValid(data.apiKeyValid);
+    setNotificationEmail(data.email || "");
     setDefaultCategories(data.settings.defaultCategories);
     setMaxPagesPerPaper(data.settings.maxPagesPerPaper);
     setPapersPerCategory(data.settings.papersPerCategory);
@@ -66,6 +70,33 @@ export default function SettingsPage() {
       setMessage("Failed to delete API key");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    setEmailLoading(true);
+    setEmailMessage("");
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          defaultCategories,
+          maxPagesPerPaper,
+          papersPerCategory,
+          email: notificationEmail,
+        }),
+      });
+      if (res.ok) {
+        setEmailMessage("Notification email saved");
+      } else {
+        const error = await res.json();
+        setEmailMessage(error.error || "Failed to save email");
+      }
+    } catch {
+      setEmailMessage("Failed to save email");
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -184,6 +215,73 @@ export default function SettingsPage() {
               >
                 Save API Key
               </button>
+            </div>
+          )}
+        </div>
+
+        <div style={{
+          background: 'var(--bg-secondary)',
+          border: '0.5px solid var(--border-primary)',
+          borderRadius: '6px',
+          padding: '16px'
+        }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
+            Notifications
+          </h2>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            Receive an email when batch processing completes.
+          </p>
+          <input
+            type="email"
+            value={notificationEmail}
+            onChange={(e) => setNotificationEmail(e.target.value)}
+            placeholder="you@example.com"
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: 'var(--bg-primary)',
+              border: '0.5px solid var(--border-primary)',
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+              fontSize: '13px',
+              marginBottom: '12px',
+              outline: 'none'
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+          />
+          <button
+            onClick={handleSaveEmail}
+            disabled={emailLoading || !notificationEmail}
+            style={{
+              padding: '8px 12px',
+              background: 'var(--accent)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: (emailLoading || !notificationEmail) ? 'not-allowed' : 'pointer',
+              opacity: (emailLoading || !notificationEmail) ? 0.5 : 1,
+              transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+              minHeight: '44px'
+            }}
+            onMouseEnter={(e) => {
+              if (!emailLoading && notificationEmail) e.currentTarget.style.background = 'var(--accent-hover)';
+            }}
+            onMouseLeave={(e) => {
+              if (!emailLoading && notificationEmail) e.currentTarget.style.background = 'var(--accent)';
+            }}
+          >
+            Save Email
+          </button>
+          {emailMessage && (
+            <div style={{
+              marginTop: '12px',
+              fontSize: '13px',
+              color: 'var(--text-secondary)'
+            }}>
+              {emailMessage}
             </div>
           )}
         </div>

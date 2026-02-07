@@ -38,6 +38,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
+    email: user.email || "",
     settings: {
       ...user.settings,
       keywords: user.settings.keywords || [],
@@ -56,11 +57,18 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { defaultCategories, maxPagesPerPaper, papersPerCategory, keywords, keywordMatchMode } = body;
+  const { defaultCategories, maxPagesPerPaper, papersPerCategory, keywords, keywordMatchMode, email } = body;
 
   if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
     return NextResponse.json(
       { error: "keywordMatchMode must be 'any' or 'all'" },
+      { status: 400 }
+    );
+  }
+
+  if (email !== undefined && (typeof email !== "string" || !email.includes("@"))) {
+    return NextResponse.json(
+      { error: "Invalid email address" },
       { status: 400 }
     );
   }
@@ -79,6 +87,10 @@ export async function PUT(request: Request) {
 
   if (keywordMatchMode !== undefined) {
     updateFields["settings.keywordMatchMode"] = keywordMatchMode;
+  }
+
+  if (email !== undefined) {
+    updateFields.email = email;
   }
 
   await users.updateOne(

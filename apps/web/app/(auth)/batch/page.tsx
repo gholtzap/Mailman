@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ARXIV_CATEGORIES, POPULAR_CATEGORY_IDS } from "@/lib/arxiv-categories";
+import Modal from "@/app/components/Modal";
 
 const POPULAR_CATEGORIES = ARXIV_CATEGORIES.flatMap(section =>
   section.categories.filter(cat => POPULAR_CATEGORY_IDS.has(cat.id))
@@ -16,7 +17,18 @@ export default function BatchScrapePage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [modalEmail, setModalEmail] = useState("");
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => setUserEmail(data.email || ""));
+  }, []);
 
   const toggleCategory = (categoryId: string) => {
     setSelectedCategories((prev) =>
@@ -38,14 +50,7 @@ export default function BatchScrapePage() {
     [categoryFilter]
   );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (selectedCategories.length === 0) {
-      setMessage("Please select at least one category");
-      return;
-    }
-
+  const submitBatch = async () => {
     setLoading(true);
     setMessage("");
 
@@ -72,6 +77,54 @@ export default function BatchScrapePage() {
       setMessage(`An error occurred: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (selectedCategories.length === 0) {
+      setMessage("Please select at least one category");
+      return;
+    }
+
+    if (!userEmail) {
+      setShowEmailModal(true);
+      return;
+    }
+
+    await submitBatch();
+  };
+
+  const handleModalSubmit = async () => {
+    if (!modalEmail || !modalEmail.includes("@")) {
+      setModalError("Please enter a valid email address");
+      return;
+    }
+
+    setModalLoading(true);
+    setModalError("");
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: modalEmail }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        setModalError(error.error || "Failed to save email");
+        return;
+      }
+
+      setUserEmail(modalEmail);
+      setShowEmailModal(false);
+      await submitBatch();
+    } catch {
+      setModalError("Failed to save email");
+    } finally {
+      setModalLoading(false);
     }
   };
 
@@ -383,6 +436,90 @@ export default function BatchScrapePage() {
           <li>Only papers under your configured page limit will be processed</li>
         </ol>
       </div>
+
+      <Modal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        title="Add Notification Email"
+      >
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+          Enter your email to receive a notification when batch processing completes.
+        </p>
+        <input
+          type="email"
+          value={modalEmail}
+          onChange={(e) => setModalEmail(e.target.value)}
+          placeholder="you@example.com"
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            background: 'var(--bg-primary)',
+            border: '0.5px solid var(--border-primary)',
+            borderRadius: '4px',
+            color: 'var(--text-primary)',
+            fontSize: '13px',
+            marginBottom: '16px',
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleModalSubmit();
+            }
+          }}
+        />
+        {modalError && (
+          <p style={{ fontSize: '12px', color: 'var(--error)', marginBottom: '12px' }}>
+            {modalError}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setShowEmailModal(false)}
+            style={{
+              padding: '8px 12px',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              border: '0.5px solid var(--border-primary)',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              minHeight: '44px',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleModalSubmit}
+            disabled={modalLoading || !modalEmail}
+            style={{
+              padding: '8px 12px',
+              background: 'var(--accent)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: (modalLoading || !modalEmail) ? 'not-allowed' : 'pointer',
+              opacity: (modalLoading || !modalEmail) ? 0.5 : 1,
+              transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+              minHeight: '44px',
+            }}
+            onMouseEnter={(e) => {
+              if (!modalLoading && modalEmail) e.currentTarget.style.background = 'var(--accent-hover)';
+            }}
+            onMouseLeave={(e) => {
+              if (!modalLoading && modalEmail) e.currentTarget.style.background = 'var(--accent)';
+            }}
+          >
+            {modalLoading ? "Saving..." : "Save & Submit"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

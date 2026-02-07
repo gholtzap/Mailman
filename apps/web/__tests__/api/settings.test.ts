@@ -34,7 +34,7 @@ describe('/api/settings', () => {
       expect(data.error).toBe('Unauthorized')
     })
 
-    it('should return user settings if user exists', async () => {
+    it('should return user settings and email if user exists', async () => {
       const user = await createTestUser(client, {
         clerkId: 'test_user_123',
         email: 'test@example.com',
@@ -53,6 +53,7 @@ describe('/api/settings', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
+      expect(data.email).toBe('test@example.com')
       expect(data.settings).toEqual({
         defaultCategories: ['cs.AI', 'cs.LG'],
         keywords: ['transformer', 'attention'],
@@ -65,7 +66,7 @@ describe('/api/settings', () => {
       expect(data.usage).toBeDefined()
     })
 
-    it('should create user if not exists and return default settings', async () => {
+    it('should create user if not exists and return default settings with email', async () => {
       setMockUserId('new_user_456')
       setMockUser({
         id: 'new_user_456',
@@ -76,6 +77,7 @@ describe('/api/settings', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
+      expect(data.email).toBe('newuser@example.com')
       expect(data.settings).toEqual({
         defaultCategories: ['cs.AI', 'cs.LG'],
         keywords: [],
@@ -90,6 +92,21 @@ describe('/api/settings', () => {
       const createdUser = await db.collection('users').findOne({ clerkId: 'new_user_456' })
       expect(createdUser).toBeDefined()
       expect(createdUser?.email).toBe('newuser@example.com')
+    })
+
+    it('should return empty string for email when user has no email', async () => {
+      await createTestUser(client, {
+        clerkId: 'test_no_email',
+        email: '',
+      })
+
+      setMockUserId('test_no_email')
+
+      const response = await GET()
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.email).toBe('')
     })
 
     it('should handle user without keywords field', async () => {
@@ -188,6 +205,56 @@ describe('/api/settings', () => {
 
       expect(response.status).toBe(400)
       expect(data.error).toBe("keywordMatchMode must be 'any' or 'all'")
+    })
+
+    it('should update email on user record', async () => {
+      await createTestUser(client, {
+        clerkId: 'test_user_123',
+        email: 'old@example.com',
+      })
+
+      setMockUserId('test_user_123')
+
+      const request = new Request('http://localhost/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          defaultCategories: ['cs.AI'],
+          maxPagesPerPaper: 50,
+          papersPerCategory: 5,
+          email: 'new@example.com',
+        }),
+      })
+
+      const response = await PUT(request)
+      expect(response.status).toBe(200)
+
+      const db = getTestDb()
+      const updatedUser = await db.collection('users').findOne({ clerkId: 'test_user_123' })
+      expect(updatedUser?.email).toBe('new@example.com')
+    })
+
+    it('should reject invalid email', async () => {
+      await createTestUser(client, {
+        clerkId: 'test_user_123',
+      })
+
+      setMockUserId('test_user_123')
+
+      const request = new Request('http://localhost/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          defaultCategories: ['cs.AI'],
+          maxPagesPerPaper: 50,
+          papersPerCategory: 5,
+          email: 'not-an-email',
+        }),
+      })
+
+      const response = await PUT(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Invalid email address')
     })
 
     it('should update keywords without keywordMatchMode', async () => {
