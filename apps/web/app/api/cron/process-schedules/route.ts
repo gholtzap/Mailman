@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getRecurringSchedulesCollection, getProcessingJobsCollection, getUsersCollection } from "@/lib/db/collections";
-import { paperProcessingQueue } from "@/lib/queue";
+import { processBatchScrape } from "@/lib/processing/batch";
 import { createLogger } from "@/lib/logging";
+
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const log = createLogger({ route: "cron-process-schedules" });
@@ -86,26 +88,17 @@ export async function GET(request: Request) {
 
         scheduleLog.info({ jobId: job.insertedId }, "Created job for schedule");
 
-        const queueData: any = {
-          userId: user.clerkId,
-          jobId: job.insertedId.toString(),
-          categories: schedule.categories,
-          papersPerCategory: schedule.papersPerCategory,
-          maxPagesPerPaper: user.settings.maxPagesPerPaper,
-          encryptedApiKey: user.apiKey,
-          scheduleId: schedule._id.toString(),
-          notificationEmail: schedule.email,
-        };
-
-        if (schedule.keywords !== undefined) {
-          queueData.keywords = schedule.keywords;
-        }
-
-        if (schedule.keywordMatchMode !== undefined) {
-          queueData.keywordMatchMode = schedule.keywordMatchMode;
-        }
-
-        await paperProcessingQueue.add("batch-scrape", queueData);
+        after(() =>
+          processBatchScrape({
+            jobId: job.insertedId.toString(),
+            userId: user._id!,
+            categories: schedule.categories,
+            papersPerCategory: schedule.papersPerCategory,
+            keywords: schedule.keywords,
+            keywordMatchMode: schedule.keywordMatchMode,
+            encryptedApiKey: user.apiKey || null,
+          })
+        );
 
         const nextRunAt = new Date(now);
         nextRunAt.setDate(nextRunAt.getDate() + schedule.intervalDays);

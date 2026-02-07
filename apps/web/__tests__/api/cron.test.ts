@@ -1,12 +1,27 @@
-import { GET } from '@/app/api/cron/process-schedules/route'
 import { setupTestDatabase, teardownTestDatabase, clearDatabase, getTestDb } from '../utils/test-db'
 import { createTestUser, createTestSchedule } from '../utils/helpers'
 import { MongoClient } from 'mongodb'
 import { resetAuthMocks } from '../../__mocks__/@clerk/nextjs/server'
-import { mockPaperProcessingQueue, resetQueueMocks } from '../../__mocks__/lib/queue/index'
 
 jest.mock('@clerk/nextjs/server')
-jest.mock('@/lib/queue', () => require('../../__mocks__/lib/queue/index'))
+
+const mockProcessBatchScrape = jest.fn().mockResolvedValue(undefined)
+jest.mock('@/lib/processing/batch', () => ({
+  processBatchScrape: (...args: any[]) => mockProcessBatchScrape(...args),
+}))
+
+jest.mock('next/server', () => ({
+  __esModule: true,
+  NextResponse: {
+    json: (body: any, init?: any) => new Response(JSON.stringify(body), {
+      status: init?.status || 200,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  },
+  after: (fn: () => Promise<void>) => fn(),
+}))
+
+import { GET } from '@/app/api/cron/process-schedules/route'
 
 describe('/api/cron/process-schedules', () => {
   let client: MongoClient
@@ -25,7 +40,7 @@ describe('/api/cron/process-schedules', () => {
   beforeEach(async () => {
     await clearDatabase()
     resetAuthMocks()
-    resetQueueMocks()
+    mockProcessBatchScrape.mockClear()
   })
 
   describe('GET /api/cron/process-schedules', () => {
@@ -88,7 +103,7 @@ describe('/api/cron/process-schedules', () => {
 
       expect(response.status).toBe(200)
       expect(data.processed).toBe(0)
-      expect(mockPaperProcessingQueue.add).not.toHaveBeenCalled()
+      expect(mockProcessBatchScrape).not.toHaveBeenCalled()
     })
 
     it('should not process paused schedules', async () => {
@@ -139,13 +154,10 @@ describe('/api/cron/process-schedules', () => {
       expect(data.results[0].status).toBe('success')
       expect(data.results[0].scheduleId).toBeDefined()
 
-      expect(mockPaperProcessingQueue.add).toHaveBeenCalledWith(
-        'batch-scrape',
+      expect(mockProcessBatchScrape).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: user.clerkId,
           categories: ['cs.AI'],
           papersPerCategory: 3,
-          scheduleId: schedule._id!.toString(),
         })
       )
 
@@ -183,8 +195,7 @@ describe('/api/cron/process-schedules', () => {
       expect(response.status).toBe(200)
       expect(data.processed).toBe(1)
 
-      expect(mockPaperProcessingQueue.add).toHaveBeenCalledWith(
-        'batch-scrape',
+      expect(mockProcessBatchScrape).toHaveBeenCalledWith(
         expect.objectContaining({
           keywords: ['transformer', 'attention'],
           keywordMatchMode: 'all',
@@ -215,38 +226,11 @@ describe('/api/cron/process-schedules', () => {
       expect(data.processed).toBe(1)
       expect(data.results[0].status).toBe('paused')
       expect(data.results[0].reason).toBe('No API key configured')
-      expect(mockPaperProcessingQueue.add).not.toHaveBeenCalled()
+      expect(mockProcessBatchScrape).not.toHaveBeenCalled()
 
       const db = getTestDb()
       const updatedSchedule = await db.collection('recurring_schedules').findOne({ _id: schedule._id })
       expect(updatedSchedule?.status).toBe('paused')
-    })
-
-    it('should include email in queue data if schedule has email', async () => {
-      const user = await createTestUser(client)
-      const pastDate = new Date(Date.now() - 3600000)
-      await createTestSchedule(client, user._id!.toString(), {
-        status: 'active',
-        nextRunAt: pastDate,
-        email: 'notify@example.com',
-      })
-
-      const request = new Request('http://localhost/api/cron/process-schedules', {
-        headers: {
-          authorization: `Bearer ${CRON_SECRET}`,
-        },
-      })
-
-      const response = await GET(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(200)
-      expect(mockPaperProcessingQueue.add).toHaveBeenCalledWith(
-        'batch-scrape',
-        expect.objectContaining({
-          notificationEmail: 'notify@example.com',
-        })
-      )
     })
 
     it('should process multiple due schedules', async () => {
@@ -276,7 +260,7 @@ describe('/api/cron/process-schedules', () => {
 
       expect(response.status).toBe(200)
       expect(data.processed).toBe(2)
-      expect(mockPaperProcessingQueue.add).toHaveBeenCalledTimes(2)
+      expect(mockProcessBatchScrape).toHaveBeenCalledTimes(2)
     })
 
     it('should calculate next run date correctly based on intervalDays', async () => {

@@ -8,7 +8,6 @@ export default async function globalSetup() {
 
   ;(global as any).__MONGOINSTANCE = replSet
   process.env.MONGODB_URI = uri
-  process.env.UPSTASH_REDIS_URL = 'redis://localhost:6379'
 
   console.log(`MongoDB Memory ReplSet started at ${uri}`)
 }

@@ -11,7 +11,6 @@ const customJestConfig = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
-    '^@/lib/queue$': '<rootDir>/__mocks__/lib/queue/index.ts',
     '^@/lib/encryption$': '<rootDir>/__mocks__/lib/encryption/index.ts',
   },
   testMatch: [

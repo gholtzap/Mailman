@@ -1,8 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getUsersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
-import { paperProcessingQueue } from "@/lib/queue";
+import { processBatchScrape } from "@/lib/processing/batch";
 import { createLogger } from "@/lib/logging";
+
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -95,29 +97,19 @@ export async function POST(request: Request) {
     });
     log.info({ jobId: job.insertedId }, "Job created and queued");
 
-    const queueData: any = {
-      userId: userId,
-      jobId: job.insertedId.toString(),
-      categories,
-      papersPerCategory: papersPerCategory || user.settings.papersPerCategory,
-      maxPagesPerPaper: user.settings.maxPagesPerPaper,
-      encryptedApiKey: user.apiKey || null,
-    };
-
-    if (keywords !== undefined) {
-      queueData.keywords = keywords;
-    }
-
-    if (keywordMatchMode !== undefined) {
-      queueData.keywordMatchMode = keywordMatchMode;
-    }
-
-    if (skipAI !== undefined) {
-      queueData.skipAI = skipAI;
-    }
-
-    await paperProcessingQueue.add("batch-scrape", queueData);
-    log.info("Job added to queue successfully");
+    after(() =>
+      processBatchScrape({
+        jobId: job.insertedId.toString(),
+        userId: user._id!,
+        categories,
+        papersPerCategory: papersPerCategory || user.settings.papersPerCategory,
+        keywords,
+        keywordMatchMode,
+        encryptedApiKey: user.apiKey || null,
+        skipAI,
+      })
+    );
+    log.info("Batch processing triggered");
 
     return NextResponse.json({ success: true, jobId: job.insertedId });
   } catch (error) {

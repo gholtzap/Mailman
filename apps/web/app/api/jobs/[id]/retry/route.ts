@@ -2,9 +2,9 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse, after } from "next/server";
 import { ObjectId } from "mongodb";
 import { getUsersCollection, getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
-import { paperProcessingQueue } from "@/lib/queue";
 import { createLogger } from "@/lib/logging";
 import { processSinglePaper } from "@/lib/processing/single";
+import { processBatchScrape } from "@/lib/processing/batch";
 
 export const maxDuration = 300;
 
@@ -155,26 +155,20 @@ export async function POST(
         { $set: { progress: { total: categories.length * papersPerCategory, completed: 0 } } }
       );
 
-      const queueData: Record<string, unknown> = {
-        userId: userId,
-        jobId: id,
-        categories,
-        papersPerCategory,
-        maxPagesPerPaper: user.settings.maxPagesPerPaper,
-        encryptedApiKey: user.apiKey || null,
-      };
+      after(() =>
+        processBatchScrape({
+          jobId: id,
+          userId: user._id!,
+          categories,
+          papersPerCategory,
+          keywords: job.input.keywords,
+          keywordMatchMode: job.input.keywordMatchMode,
+          encryptedApiKey: user.apiKey || null,
+          skipAI: job.input.skipAI,
+        })
+      );
 
-      if (job.input.keywords !== undefined) {
-        queueData.keywords = job.input.keywords;
-      }
-
-      if (job.input.keywordMatchMode !== undefined) {
-        queueData.keywordMatchMode = job.input.keywordMatchMode;
-      }
-
-      await paperProcessingQueue.add("batch-scrape", queueData);
-
-      log.info({ jobId: id }, "Batch scrape retry queued");
+      log.info({ jobId: id }, "Batch scrape retry triggered");
     }
 
     return NextResponse.json({ success: true });

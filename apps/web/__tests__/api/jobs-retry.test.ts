@@ -1,7 +1,6 @@
 import { setupTestDatabase, teardownTestDatabase, clearDatabase, getTestDb } from '../utils/test-db'
 import { createTestUser, createTestPaper, createTestProcessedPaper, createTestProcessingJob } from '../utils/helpers'
 import { MongoClient, ObjectId } from 'mongodb'
-import { mockPaperProcessingQueue, resetQueueMocks } from '../../__mocks__/lib/queue/index'
 
 const mockAuth = jest.fn()
 jest.mock('@clerk/nextjs/server', () => ({
@@ -21,7 +20,10 @@ jest.mock('@/lib/processing/single', () => ({
   processSinglePaper: (...args: any[]) => mockProcessSinglePaper(...args),
 }))
 
-jest.mock('@/lib/queue', () => require('../../__mocks__/lib/queue/index'))
+const mockProcessBatchScrape = jest.fn().mockResolvedValue(undefined)
+jest.mock('@/lib/processing/batch', () => ({
+  processBatchScrape: (...args: any[]) => mockProcessBatchScrape(...args),
+}))
 
 jest.mock('next/server', () => ({
   __esModule: true,
@@ -51,8 +53,8 @@ describe('POST /api/jobs/[id]/retry', () => {
   beforeEach(async () => {
     await clearDatabase()
     resetAuthMocks()
-    resetQueueMocks()
     mockProcessSinglePaper.mockClear()
+    mockProcessBatchScrape.mockClear()
   })
 
   function makeRequest(id: string) {
@@ -169,7 +171,7 @@ describe('POST /api/jobs/[id]/retry', () => {
     expect(updatedJob?.status).toBe('queued')
   })
 
-  it('should retry failed batch_scrape job via queue', async () => {
+  it('should retry failed batch_scrape job', async () => {
     const user = await createTestUser(client)
     setMockUserId(user.clerkId)
 
@@ -188,10 +190,8 @@ describe('POST /api/jobs/[id]/retry', () => {
 
     expect(response.status).toBe(200)
     expect(data.success).toBe(true)
-    expect(mockPaperProcessingQueue.add).toHaveBeenCalledWith(
-      'batch-scrape',
+    expect(mockProcessBatchScrape).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: user.clerkId,
         jobId: job._id!.toString(),
         categories: ['cs.AI', 'cs.LG'],
         papersPerCategory: 3,

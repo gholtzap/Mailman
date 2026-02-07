@@ -4,12 +4,31 @@ import { setupTestDatabase, teardownTestDatabase, clearDatabase, getTestDb } fro
 import { createTestUser, createTestPaper } from '../utils/helpers'
 import { MongoClient } from 'mongodb'
 import { setMockUserId, resetAuthMocks } from '../../__mocks__/@clerk/nextjs/server'
-import { mockPaperProcessingQueue, resetQueueMocks } from '../../__mocks__/lib/queue/index'
 import { __setMockClient, __resetMockClient } from '../../__mocks__/lib/db/mongodb'
 
 jest.mock('@clerk/nextjs/server')
-jest.mock('@/lib/queue', () => require('../../__mocks__/lib/queue/index'))
 jest.mock('@/lib/db/mongodb', () => require('../../__mocks__/lib/db/mongodb'))
+
+const mockProcessSinglePaper = jest.fn().mockResolvedValue(undefined)
+jest.mock('@/lib/processing/single', () => ({
+  processSinglePaper: (...args: any[]) => mockProcessSinglePaper(...args),
+}))
+
+const mockProcessBatchScrape = jest.fn().mockResolvedValue(undefined)
+jest.mock('@/lib/processing/batch', () => ({
+  processBatchScrape: (...args: any[]) => mockProcessBatchScrape(...args),
+}))
+
+jest.mock('next/server', () => ({
+  __esModule: true,
+  NextResponse: {
+    json: (body: any, init?: any) => new Response(JSON.stringify(body), {
+      status: init?.status || 200,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  },
+  after: (fn: () => Promise<void>) => fn(),
+}))
 
 describe('/api/processing', () => {
   let client: MongoClient
@@ -28,7 +47,8 @@ describe('/api/processing', () => {
   beforeEach(async () => {
     await clearDatabase()
     resetAuthMocks()
-    resetQueueMocks()
+    mockProcessSinglePaper.mockClear()
+    mockProcessBatchScrape.mockClear()
   })
 
   describe('POST /api/processing/single', () => {
@@ -62,7 +82,7 @@ describe('/api/processing', () => {
       expect(data.error).toBe('User not found')
     })
 
-    it('should return 400 if user has no API key', async () => {
+    it('should process paper without AI when user has no API key', async () => {
       const user = await createTestUser(client, {
         apiKey: undefined,
       })
@@ -78,8 +98,14 @@ describe('/api/processing', () => {
       const response = await PostSingle(request)
       const data = await response.json()
 
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('API key not configured')
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(mockProcessSinglePaper).toHaveBeenCalledWith(
+        expect.objectContaining({
+          arxivId: paper.arxivId,
+          encryptedApiKey: null,
+        })
+      )
     })
 
     it('should return 404 if paper not found', async () => {
@@ -103,7 +129,7 @@ describe('/api/processing', () => {
       const paper = await createTestPaper(client)
 
       const db = getTestDb()
-      const existingProcessed = await db.collection('processed_papers').insertOne({
+      await db.collection('processed_papers').insertOne({
         userId: user._id!,
         paperId: paper._id!,
         arxivId: paper.arxivId,
@@ -127,7 +153,7 @@ describe('/api/processing', () => {
       expect(response.status).toBe(200)
       expect(data.processedPaper).toBeDefined()
       expect(data.processedPaper.status).toBe('completed')
-      expect(mockPaperProcessingQueue.add).not.toHaveBeenCalled()
+      expect(mockProcessSinglePaper).not.toHaveBeenCalled()
     })
 
     it('should return existing processed paper if currently processing', async () => {
@@ -157,7 +183,7 @@ describe('/api/processing', () => {
       expect(response.status).toBe(200)
       expect(data.processedPaper).toBeDefined()
       expect(data.processedPaper.status).toBe('processing')
-      expect(mockPaperProcessingQueue.add).not.toHaveBeenCalled()
+      expect(mockProcessSinglePaper).not.toHaveBeenCalled()
     })
 
     it('should create new processing job and queue paper', async () => {
@@ -178,11 +204,8 @@ describe('/api/processing', () => {
       expect(data.success).toBe(true)
       expect(data.jobId).toBeDefined()
 
-      expect(mockPaperProcessingQueue.add).toHaveBeenCalledWith(
-        'process-single-paper',
+      expect(mockProcessSinglePaper).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: user.clerkId,
-          paperId: paper._id!.toString(),
           arxivId: paper.arxivId,
           encryptedApiKey: user.apiKey,
         })
@@ -231,7 +254,7 @@ describe('/api/processing', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(mockPaperProcessingQueue.add).toHaveBeenCalled()
+      expect(mockProcessSinglePaper).toHaveBeenCalled()
 
       const updatedProcessed = await db.collection('processed_papers').findOne({
         _id: failedProcessed.insertedId,
@@ -278,29 +301,7 @@ describe('/api/processing', () => {
       expect(data.error).toBe('User not found')
     })
 
-    it('should return 400 if user has no API key', async () => {
-      const user = await createTestUser(client, {
-        apiKey: undefined,
-      })
-
-      setMockUserId(user.clerkId)
-
-      const request = new Request('http://localhost/api/processing/batch', {
-        method: 'POST',
-        body: JSON.stringify({
-          categories: ['cs.AI'],
-          papersPerCategory: 5,
-        }),
-      })
-
-      const response = await PostBatch(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('API key not configured')
-    })
-
-    it('should create batch processing job and queue it', async () => {
+    it('should create batch processing job', async () => {
       const user = await createTestUser(client)
       setMockUserId(user.clerkId)
 
@@ -321,16 +322,13 @@ describe('/api/processing', () => {
       expect(data.success).toBe(true)
       expect(data.jobId).toBeDefined()
 
-      expect(mockPaperProcessingQueue.add).toHaveBeenCalledWith(
-        'batch-scrape',
+      expect(mockProcessBatchScrape).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: user.clerkId,
           categories: ['cs.AI', 'cs.LG'],
           papersPerCategory: 3,
-          maxPagesPerPaper: user.settings.maxPagesPerPaper,
-          encryptedApiKey: user.apiKey,
           keywords: ['transformer'],
           keywordMatchMode: 'any',
+          encryptedApiKey: user.apiKey,
         })
       )
 
@@ -367,12 +365,10 @@ describe('/api/processing', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(mockPaperProcessingQueue.add).toHaveBeenCalledWith(
-        'batch-scrape',
+      expect(mockProcessBatchScrape).toHaveBeenCalledWith(
         expect.objectContaining({
           categories: ['cs.AI'],
           papersPerCategory: 5,
-          maxPagesPerPaper: 50,
         })
       )
     })
