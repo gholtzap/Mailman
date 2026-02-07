@@ -257,6 +257,32 @@ describe('/api/settings', () => {
       expect(data.error).toBe('Invalid email address')
     })
 
+    it('should clear email with empty string', async () => {
+      await createTestUser(client, {
+        clerkId: 'test_user_123',
+        email: 'existing@example.com',
+      })
+
+      setMockUserId('test_user_123')
+
+      const request = new Request('http://localhost/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          defaultCategories: ['cs.AI'],
+          maxPagesPerPaper: 50,
+          papersPerCategory: 5,
+          email: '',
+        }),
+      })
+
+      const response = await PUT(request)
+      expect(response.status).toBe(200)
+
+      const db = getTestDb()
+      const updatedUser = await db.collection('users').findOne({ clerkId: 'test_user_123' })
+      expect(updatedUser?.email).toBe('')
+    })
+
     it('should update keywords without keywordMatchMode', async () => {
       await createTestUser(client, {
         clerkId: 'test_user_123',

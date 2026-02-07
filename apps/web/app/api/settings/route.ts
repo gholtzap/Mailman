@@ -66,7 +66,14 @@ export async function PUT(request: Request) {
     );
   }
 
-  if (email !== undefined && (typeof email !== "string" || !email.includes("@"))) {
+  if (email !== undefined && typeof email !== "string") {
+    return NextResponse.json(
+      { error: "Invalid email address" },
+      { status: 400 }
+    );
+  }
+
+  if (email !== undefined && email !== "" && !email.includes("@")) {
     return NextResponse.json(
       { error: "Invalid email address" },
       { status: 400 }
