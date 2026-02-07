@@ -26,11 +26,17 @@ interface Job {
     completed: number;
   };
   createdAt: string;
+  updatedAt?: string;
 }
+
+type TimelineItem =
+  | { kind: "paper"; data: Paper }
+  | { kind: "job"; data: Job };
 
 interface DashboardData {
   recentPapers: Paper[];
   activeJobs: Job[];
+  recentJobs: Job[];
   stats: {
     completedPapers: number;
     monthlyUsage: number;
@@ -361,73 +367,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>Recent Papers</h2>
-          <Link href="/papers" style={{
-            fontSize: '13px',
-            color: 'var(--accent)',
-            textDecoration: 'none',
-            transition: 'color 150ms cubic-bezier(0.25, 1, 0.5, 1)'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent)'}>
-            View All
-          </Link>
-        </div>
-
-        {data.recentPapers.length === 0 ? (
-          <div style={{
-            background: 'var(--bg-secondary)',
-            border: '0.5px solid var(--border-primary)',
-            borderRadius: '6px',
-            padding: '32px',
-            textAlign: 'center',
-            fontSize: '13px',
-            color: 'var(--text-muted)'
-          }}>
-            No papers processed yet.
-          </div>
-        ) : (
-          <div style={{
-            background: 'var(--bg-secondary)',
-            border: '0.5px solid var(--border-primary)',
-            borderRadius: '6px',
-            overflow: 'hidden'
-          }}>
-            {data.recentPapers.map((paper, i) => (
-              <Link key={paper._id} href={`/papers/${paper._id}`} style={{
-                display: 'block',
-                padding: '12px',
-                borderBottom: i < data.recentPapers.length - 1 ? '0.5px solid var(--border-secondary)' : 'none',
-                textDecoration: 'none',
-                transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontFamily: 'var(--font-geist-mono)', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                      {paper.arxivId}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      <StatusBadge status={paper.status} />
-                      {paper.costs && (
-                        <span style={{ marginLeft: '12px', fontFamily: 'var(--font-geist-mono)' }}>
-                          ${paper.costs.estimatedCostUsd.toFixed(4)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>
-                    {new Date(paper.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      <RecentTimeline
+        recentPapers={data.recentPapers}
+        recentJobs={data.recentJobs}
+      />
     </div>
     </>
   );
@@ -454,6 +397,127 @@ function StatCard({ label, value, mono }: { label: string; value: string | numbe
       }}>
         {value}
       </div>
+    </div>
+  );
+}
+
+function RecentTimeline({ recentPapers, recentJobs }: { recentPapers: Paper[]; recentJobs: Job[] }) {
+  const timeline: TimelineItem[] = [
+    ...recentPapers.map((p): TimelineItem => ({ kind: "paper", data: p })),
+    ...recentJobs.map((j): TimelineItem => ({ kind: "job", data: j })),
+  ]
+    .sort((a, b) => new Date(b.data.createdAt).getTime() - new Date(a.data.createdAt).getTime())
+    .slice(0, 10);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>Recent Papers</h2>
+        <Link href="/papers" style={{
+          fontSize: '13px',
+          color: 'var(--accent)',
+          textDecoration: 'none',
+          transition: 'color 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-hover)'}
+        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent)'}>
+          View All
+        </Link>
+      </div>
+
+      {timeline.length === 0 ? (
+        <div style={{
+          background: 'var(--bg-secondary)',
+          border: '0.5px solid var(--border-primary)',
+          borderRadius: '6px',
+          padding: '32px',
+          textAlign: 'center',
+          fontSize: '13px',
+          color: 'var(--text-muted)'
+        }}>
+          No papers processed yet.
+        </div>
+      ) : (
+        <div style={{
+          background: 'var(--bg-secondary)',
+          border: '0.5px solid var(--border-primary)',
+          borderRadius: '6px',
+          overflow: 'hidden'
+        }}>
+          {timeline.map((item, i) => {
+            if (item.kind === "paper") {
+              const paper = item.data;
+              return (
+                <Link key={`paper-${paper._id}`} href={`/papers/${paper._id}`} style={{
+                  display: 'block',
+                  padding: '12px',
+                  borderBottom: i < timeline.length - 1 ? '0.5px solid var(--border-secondary)' : 'none',
+                  textDecoration: 'none',
+                  transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '13px', fontFamily: 'var(--font-geist-mono)', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        {paper.arxivId}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        <StatusBadge status={paper.status} />
+                        {paper.costs && (
+                          <span style={{ marginLeft: '12px', fontFamily: 'var(--font-geist-mono)' }}>
+                            ${paper.costs.estimatedCostUsd.toFixed(4)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>
+                      {new Date(paper.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            const job = item.data as Job;
+            return (
+              <div key={`job-${job._id}`} style={{
+                padding: '12px',
+                borderBottom: i < timeline.length - 1 ? '0.5px solid var(--border-secondary)' : 'none',
+                borderLeft: '3px solid var(--accent)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        color: 'var(--accent)',
+                      }}>
+                        Batch
+                      </span>
+                      <span style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
+                        {job.input.categories?.join(", ") || "Batch Scrape"}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      <StatusBadge status={job.status} />
+                      <span style={{ fontFamily: 'var(--font-geist-mono)' }}>
+                        {job.progress.completed} / {job.progress.total} papers
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>
+                    {new Date(job.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -47,6 +47,7 @@ describe('/api/dashboard', () => {
       expect(response.status).toBe(200)
       expect(data.recentPapers).toEqual([])
       expect(data.activeJobs).toEqual([])
+      expect(data.recentJobs).toEqual([])
       expect(data.stats).toEqual({
         completedPapers: 0,
         monthlyUsage: 0,
@@ -120,6 +121,40 @@ describe('/api/dashboard', () => {
       expect(response.status).toBe(200)
       expect(data.activeJobs).toHaveLength(2)
       expect(data.activeJobs.every((job: any) => ['queued', 'running'].includes(job.status))).toBe(true)
+    })
+
+    it('should return recently completed batch jobs', async () => {
+      const user = await createTestUser(client)
+
+      await createTestProcessingJob(client, user._id!.toString(), {
+        status: 'completed',
+        type: 'batch_scrape',
+      })
+
+      await createTestProcessingJob(client, user._id!.toString(), {
+        status: 'failed',
+        type: 'batch_scrape',
+      })
+
+      await createTestProcessingJob(client, user._id!.toString(), {
+        status: 'completed',
+        type: 'single_paper',
+      })
+
+      await createTestProcessingJob(client, user._id!.toString(), {
+        status: 'running',
+        type: 'batch_scrape',
+      })
+
+      setMockUserId(user.clerkId)
+
+      const response = await GET()
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.recentJobs).toHaveLength(2)
+      expect(data.recentJobs.every((job: any) => job.type === 'batch_scrape')).toBe(true)
+      expect(data.recentJobs.every((job: any) => ['completed', 'failed'].includes(job.status))).toBe(true)
     })
 
     it('should limit recent papers to 5', async () => {

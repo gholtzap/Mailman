@@ -64,6 +64,16 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .toArray();
 
+    const recentJobs = await jobs
+      .find({
+        userId: user._id,
+        type: "batch_scrape",
+        status: { $in: ["completed", "failed"] },
+      })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .toArray();
+
     const completedCount = await processedPapers.countDocuments({
       userId: user._id,
       status: "completed",
@@ -85,6 +95,7 @@ export async function GET() {
       {
         recentPapersCount: recentPapers.length,
         activeJobsCount: activeJobs.length,
+        recentJobsCount: recentJobs.length,
         completedCount,
       },
       "Dashboard data retrieved"
@@ -93,6 +104,7 @@ export async function GET() {
     return NextResponse.json({
       recentPapers,
       activeJobs,
+      recentJobs,
       stats: {
         completedPapers: completedCount,
         monthlyUsage: user.usage.currentMonthPapersProcessed,
