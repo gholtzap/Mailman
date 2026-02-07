@@ -165,6 +165,22 @@ export async function createTestSchedule(client: MongoClient, userId: string, ov
   return { ...schedule, _id: result.insertedId }
 }
 
+export async function createTestFolder(client: MongoClient, userId: string | MongoObjectId, overrides: any = {}) {
+  const db = client.db('paper-reader')
+  const folder = {
+    userId: toObjectId(userId),
+    name: 'Test Folder',
+    color: '#6366f1',
+    order: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  }
+
+  const result = await db.collection('folders').insertOne(folder)
+  return { ...folder, _id: result.insertedId }
+}
+
 export function mockArxivResponse() {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">

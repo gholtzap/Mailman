@@ -64,6 +64,18 @@ async function createIndexes() {
   } catch (err: any) {
     if (err.code !== 85 && err.code !== 11000) throw err
   }
+
+  try {
+    await db.collection('folders').createIndex({ userId: 1, name: 1 }, { unique: true })
+  } catch (err: any) {
+    if (err.code !== 85 && err.code !== 11000) throw err
+  }
+
+  try {
+    await db.collection('folders').createIndex({ userId: 1, order: 1 })
+  } catch (err: any) {
+    if (err.code !== 85 && err.code !== 11000) throw err
+  }
 }
 
 export function getTestDb() {
