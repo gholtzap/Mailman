@@ -1,3 +1,4 @@
+import "@/lib/polyfills/dommatrix";
 import Anthropic from "@anthropic-ai/sdk";
 import { ObjectId } from "mongodb";
 import {
