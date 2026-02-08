@@ -112,6 +112,8 @@ export default function SchedulesPage() {
   const [userEmail, setUserEmail] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
+  const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
+
   const [formScheduleType, setFormScheduleType] = useState<"interval" | "weekly">("interval");
   const [formWeekDays, setFormWeekDays] = useState<number[]>([]);
   const [formPreferredHour, setFormPreferredHour] = useState(6);
@@ -153,6 +155,7 @@ export default function SchedulesPage() {
     setFormWeekDays([]);
     setFormPreferredHour(6);
     setFormTimezone(getBrowserTimezone());
+    setFieldErrors(new Set());
   };
 
   const buildPayload = () => {
@@ -174,15 +177,17 @@ export default function SchedulesPage() {
   };
 
   const handleCreate = async () => {
-    if (!formName.trim() || formCategories.length === 0) {
-      setMessage("Name and at least one category are required");
-      return;
-    }
-    if (formScheduleType === "weekly" && formWeekDays.length === 0) {
-      setMessage("Select at least one day of the week");
+    const errors = new Set<string>();
+    if (!formName.trim()) errors.add("name");
+    if (formCategories.length === 0) errors.add("categories");
+    if (formScheduleType === "weekly" && formWeekDays.length === 0) errors.add("weekDays");
+    if (errors.size > 0) {
+      setFieldErrors(errors);
+      setMessage("Please fill in the highlighted fields");
       return;
     }
 
+    setFieldErrors(new Set());
     setSaving(true);
     setMessage("");
 
@@ -222,15 +227,17 @@ export default function SchedulesPage() {
   };
 
   const handleUpdate = async () => {
-    if (!editingId || !formName.trim() || formCategories.length === 0) {
-      setMessage("Name and at least one category are required");
-      return;
-    }
-    if (formScheduleType === "weekly" && formWeekDays.length === 0) {
-      setMessage("Select at least one day of the week");
+    const errors = new Set<string>();
+    if (!formName.trim()) errors.add("name");
+    if (formCategories.length === 0) errors.add("categories");
+    if (formScheduleType === "weekly" && formWeekDays.length === 0) errors.add("weekDays");
+    if (!editingId || errors.size > 0) {
+      setFieldErrors(errors);
+      setMessage("Please fill in the highlighted fields");
       return;
     }
 
+    setFieldErrors(new Set());
     setSaving(true);
     setMessage("");
 
@@ -268,6 +275,7 @@ export default function SchedulesPage() {
         ? prev.filter(c => c !== categoryId)
         : [...prev, categoryId]
     );
+    if (fieldErrors.has("categories")) setFieldErrors(prev => { const next = new Set(prev); next.delete("categories"); return next; });
   };
 
   const toggleWeekDay = (day: number) => {
@@ -276,6 +284,7 @@ export default function SchedulesPage() {
         ? prev.filter(d => d !== day)
         : [...prev, day].sort((a, b) => a - b)
     );
+    if (fieldErrors.has("weekDays")) setFieldErrors(prev => { const next = new Set(prev); next.delete("weekDays"); return next; });
   };
 
   const filteredCategories = ARXIV_CATEGORIES.map(section => ({
@@ -372,11 +381,17 @@ export default function SchedulesPage() {
               <input
                 type="text"
                 value={formName}
-                onChange={(e) => setFormName(e.target.value)}
+                onChange={(e) => {
+                  setFormName(e.target.value);
+                  if (fieldErrors.has("name")) setFieldErrors(prev => { const next = new Set(prev); next.delete("name"); return next; });
+                }}
                 placeholder="Daily AI Papers"
-                style={inputStyle}
-                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+                style={{
+                  ...inputStyle,
+                  ...(fieldErrors.has("name") ? { borderColor: 'rgb(239, 68, 68)', borderWidth: '1.5px' } : {}),
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--accent)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--border-primary)'}
               />
             </div>
 
@@ -398,7 +413,7 @@ export default function SchedulesPage() {
                 overflowY: 'auto',
                 padding: '12px',
                 background: 'var(--bg-primary)',
-                border: '0.5px solid var(--border-primary)',
+                border: fieldErrors.has("categories") ? '1.5px solid rgb(239, 68, 68)' : '0.5px solid var(--border-primary)',
                 borderRadius: '4px'
               }}>
                 {filteredCategories.length === 0 ? (
@@ -594,7 +609,9 @@ export default function SchedulesPage() {
                         padding: '8px 4px',
                         background: formWeekDays.includes(index) ? 'var(--accent)' : 'var(--bg-primary)',
                         color: formWeekDays.includes(index) ? 'white' : 'var(--text-secondary)',
-                        border: '0.5px solid var(--border-primary)',
+                        border: fieldErrors.has("weekDays") && !formWeekDays.includes(index)
+                          ? '1.5px solid rgb(239, 68, 68)'
+                          : '0.5px solid var(--border-primary)',
                         borderRadius: '4px',
                         fontSize: '12px',
                         fontWeight: 500,
