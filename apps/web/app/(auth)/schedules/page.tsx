@@ -4,13 +4,98 @@ import { useState, useEffect } from "react";
 import { RecurringSchedule } from "@/lib/types";
 import { ARXIV_CATEGORIES } from "@/lib/arxiv-categories";
 
-const INTERVAL_OPTIONS = [
-  { label: "Daily", value: 1 },
-  { label: "Every 3 days", value: 3 },
-  { label: "Weekly", value: 7 },
-  { label: "Bi-weekly", value: 14 },
-  { label: "Monthly", value: 30 },
+const COMMON_TIMEZONES = [
+  { value: "Pacific/Honolulu", label: "Hawaii (HST)" },
+  { value: "America/Anchorage", label: "Alaska (AKST)" },
+  { value: "America/Los_Angeles", label: "Pacific (PST)" },
+  { value: "America/Denver", label: "Mountain (MST)" },
+  { value: "America/Chicago", label: "Central (CST)" },
+  { value: "America/New_York", label: "Eastern (EST)" },
+  { value: "America/Sao_Paulo", label: "Brasilia (BRT)" },
+  { value: "Atlantic/Reykjavik", label: "Iceland (GMT)" },
+  { value: "Europe/London", label: "London (GMT)" },
+  { value: "Europe/Paris", label: "Paris (CET)" },
+  { value: "Europe/Berlin", label: "Berlin (CET)" },
+  { value: "Europe/Moscow", label: "Moscow (MSK)" },
+  { value: "Asia/Dubai", label: "Dubai (GST)" },
+  { value: "Asia/Kolkata", label: "India (IST)" },
+  { value: "Asia/Shanghai", label: "China (CST)" },
+  { value: "Asia/Tokyo", label: "Japan (JST)" },
+  { value: "Asia/Seoul", label: "Korea (KST)" },
+  { value: "Australia/Sydney", label: "Sydney (AEST)" },
+  { value: "Pacific/Auckland", label: "New Zealand (NZST)" },
+  { value: "UTC", label: "UTC" },
 ];
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatHour(hour: number): string {
+  if (hour === 0) return "12:00 AM";
+  if (hour === 12) return "12:00 PM";
+  if (hour < 12) return `${hour}:00 AM`;
+  return `${hour - 12}:00 PM`;
+}
+
+function getScheduleLabel(schedule: RecurringSchedule): string {
+  const type = schedule.scheduleType ?? "interval";
+  if (type === "weekly" && schedule.weekDays && schedule.weekDays.length > 0) {
+    const days = [...schedule.weekDays].sort((a, b) => a - b);
+    return days.map((d) => DAY_LABELS[d]).join(", ");
+  }
+  const days = schedule.intervalDays;
+  if (days === 1) return "Daily";
+  if (days === 7) return "Weekly";
+  if (days === 14) return "Bi-weekly";
+  if (days === 30) return "Monthly";
+  return `Every ${days} days`;
+}
+
+function getTimeLabel(schedule: RecurringSchedule): string {
+  const hour = schedule.preferredHour ?? 6;
+  const tz = schedule.timezone ?? "UTC";
+  const shortTz = tz === "UTC" ? "UTC" : tz.split("/").pop()?.replace(/_/g, " ") ?? tz;
+  return `${formatHour(hour)} ${shortTz}`;
+}
+
+function getBrowserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "UTC";
+  }
+}
+
+function getTimezoneOptions(): { value: string; label: string }[] {
+  const browserTz = getBrowserTimezone();
+  const exists = COMMON_TIMEZONES.some((tz) => tz.value === browserTz);
+  if (exists) return COMMON_TIMEZONES;
+  const shortLabel = browserTz.split("/").pop()?.replace(/_/g, " ") ?? browserTz;
+  return [{ value: browserTz, label: `${shortLabel} (Local)` }, ...COMMON_TIMEZONES];
+}
+
+const inputStyle = {
+  width: "100%",
+  padding: "8px 12px",
+  background: "var(--bg-primary)",
+  border: "0.5px solid var(--border-primary)",
+  borderRadius: "4px",
+  color: "var(--text-primary)",
+  fontSize: "13px",
+  outline: "none",
+};
+
+const selectStyle = {
+  ...inputStyle,
+  cursor: "pointer",
+};
+
+const labelStyle = {
+  display: "block" as const,
+  fontSize: "12px",
+  fontWeight: 500,
+  color: "var(--text-secondary)",
+  marginBottom: "6px",
+};
 
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
@@ -26,6 +111,12 @@ export default function SchedulesPage() {
   const [formEmail, setFormEmail] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+
+  const [formScheduleType, setFormScheduleType] = useState<"interval" | "weekly">("interval");
+  const [formWeekDays, setFormWeekDays] = useState<number[]>([]);
+  const [formPreferredHour, setFormPreferredHour] = useState(6);
+  const [formTimezone, setFormTimezone] = useState(getBrowserTimezone());
+  const [timezoneOptions] = useState(getTimezoneOptions);
 
   useEffect(() => {
     fetchSchedules();
@@ -52,9 +143,43 @@ export default function SchedulesPage() {
     }
   };
 
+  const resetForm = () => {
+    setFormName("");
+    setFormCategories([]);
+    setFormPapersPerCategory(5);
+    setFormIntervalDays(1);
+    setFormEmail(userEmail);
+    setFormScheduleType("interval");
+    setFormWeekDays([]);
+    setFormPreferredHour(6);
+    setFormTimezone(getBrowserTimezone());
+  };
+
+  const buildPayload = () => {
+    const payload: any = {
+      name: formName,
+      categories: formCategories,
+      papersPerCategory: formPapersPerCategory,
+      scheduleType: formScheduleType,
+      preferredHour: formPreferredHour,
+      timezone: formTimezone,
+      email: formEmail.trim() || undefined,
+    };
+    if (formScheduleType === "interval") {
+      payload.intervalDays = formIntervalDays;
+    } else {
+      payload.weekDays = formWeekDays;
+    }
+    return payload;
+  };
+
   const handleCreate = async () => {
     if (!formName.trim() || formCategories.length === 0) {
       setMessage("Name and at least one category are required");
+      return;
+    }
+    if (formScheduleType === "weekly" && formWeekDays.length === 0) {
+      setMessage("Select at least one day of the week");
       return;
     }
 
@@ -65,22 +190,12 @@ export default function SchedulesPage() {
       const res = await fetch("/api/schedules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formName,
-          categories: formCategories,
-          papersPerCategory: formPapersPerCategory,
-          intervalDays: formIntervalDays,
-          email: formEmail.trim() || undefined,
-        }),
+        body: JSON.stringify(buildPayload()),
       });
 
       if (res.ok) {
         setMessage("Schedule created successfully");
-        setFormName("");
-        setFormCategories([]);
-        setFormPapersPerCategory(5);
-        setFormIntervalDays(1);
-        setFormEmail(userEmail);
+        resetForm();
         await fetchSchedules();
       } else {
         const error = await res.json();
@@ -100,11 +215,19 @@ export default function SchedulesPage() {
     setFormPapersPerCategory(schedule.papersPerCategory);
     setFormIntervalDays(schedule.intervalDays);
     setFormEmail(schedule.email || "");
+    setFormScheduleType(schedule.scheduleType ?? "interval");
+    setFormWeekDays(schedule.weekDays ?? []);
+    setFormPreferredHour(schedule.preferredHour ?? 6);
+    setFormTimezone(schedule.timezone ?? "UTC");
   };
 
   const handleUpdate = async () => {
     if (!editingId || !formName.trim() || formCategories.length === 0) {
       setMessage("Name and at least one category are required");
+      return;
+    }
+    if (formScheduleType === "weekly" && formWeekDays.length === 0) {
+      setMessage("Select at least one day of the week");
       return;
     }
 
@@ -115,23 +238,13 @@ export default function SchedulesPage() {
       const res = await fetch(`/api/schedules/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formName,
-          categories: formCategories,
-          papersPerCategory: formPapersPerCategory,
-          intervalDays: formIntervalDays,
-          email: formEmail.trim() || undefined,
-        }),
+        body: JSON.stringify(buildPayload()),
       });
 
       if (res.ok) {
         setMessage("Schedule updated successfully");
         setEditingId(null);
-        setFormName("");
-        setFormCategories([]);
-        setFormPapersPerCategory(5);
-        setFormIntervalDays(1);
-        setFormEmail(userEmail);
+        resetForm();
         await fetchSchedules();
       } else {
         const error = await res.json();
@@ -146,11 +259,7 @@ export default function SchedulesPage() {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setFormName("");
-    setFormCategories([]);
-    setFormPapersPerCategory(5);
-    setFormIntervalDays(1);
-    setFormEmail(userEmail);
+    resetForm();
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -158,6 +267,14 @@ export default function SchedulesPage() {
       prev.includes(categoryId)
         ? prev.filter(c => c !== categoryId)
         : [...prev, categoryId]
+    );
+  };
+
+  const toggleWeekDay = (day: number) => {
+    setFormWeekDays(prev =>
+      prev.includes(day)
+        ? prev.filter(d => d !== day)
+        : [...prev, day].sort((a, b) => a - b)
     );
   };
 
@@ -221,11 +338,6 @@ export default function SchedulesPage() {
     });
   };
 
-  const getIntervalLabel = (days: number) => {
-    const option = INTERVAL_OPTIONS.find(o => o.value === days);
-    return option ? option.label : `${days} days`;
-  };
-
   if (loading) {
     return (
       <div className="p-4 md:p-8 max-w-screen-xl">
@@ -256,31 +368,20 @@ export default function SchedulesPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Name
-              </label>
+              <label style={labelStyle}>Name</label>
               <input
                 type="text"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder="Daily AI Papers"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: 'var(--bg-primary)',
-                  border: '0.5px solid var(--border-primary)',
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
-                  outline: 'none'
-                }}
+                style={inputStyle}
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              <label style={labelStyle}>
                 Categories {formCategories.length > 0 && `(${formCategories.length} selected)`}
               </label>
               <input
@@ -288,17 +389,7 @@ export default function SchedulesPage() {
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 placeholder="Filter categories (e.g., machine learning, cs.AI, robotics)"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: 'var(--bg-primary)',
-                  border: '0.5px solid var(--border-primary)',
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
-                  marginBottom: '8px',
-                  outline: 'none'
-                }}
+                style={{ ...inputStyle, marginBottom: '8px' }}
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
               />
@@ -383,9 +474,7 @@ export default function SchedulesPage() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Papers per Category
-              </label>
+              <label style={labelStyle}>Papers per Category</label>
               <input
                 type="number"
                 min="1"
@@ -399,16 +488,9 @@ export default function SchedulesPage() {
                   setFormPapersPerCategory(Number(value) || 0);
                 }}
                 style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: 'var(--bg-primary)',
-                  border: '0.5px solid var(--border-primary)',
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
+                  ...inputStyle,
                   fontFamily: 'var(--font-geist-mono)',
                   fontVariantNumeric: 'tabular-nums',
-                  outline: 'none'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
@@ -416,24 +498,13 @@ export default function SchedulesPage() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Email for Summaries (optional)
-              </label>
+              <label style={labelStyle}>Email for Summaries (optional)</label>
               <input
                 type="email"
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
                 placeholder="you@example.com"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: 'var(--bg-primary)',
-                  border: '0.5px solid var(--border-primary)',
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
-                  outline: 'none'
-                }}
+                style={inputStyle}
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
               />
@@ -443,32 +514,130 @@ export default function SchedulesPage() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Interval
-              </label>
-              <select
-                value={formIntervalDays}
-                onChange={(e) => setFormIntervalDays(Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  background: 'var(--bg-primary)',
-                  border: '0.5px solid var(--border-primary)',
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
-              >
-                {INTERVAL_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <label style={labelStyle}>Schedule Type</label>
+              <div style={{ display: 'flex', gap: '0px' }}>
+                <button
+                  type="button"
+                  onClick={() => setFormScheduleType("interval")}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    background: formScheduleType === "interval" ? 'var(--accent)' : 'var(--bg-primary)',
+                    color: formScheduleType === "interval" ? 'white' : 'var(--text-secondary)',
+                    border: '0.5px solid var(--border-primary)',
+                    borderRadius: '4px 0 0 4px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                  }}
+                >
+                  Every X days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormScheduleType("weekly")}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    background: formScheduleType === "weekly" ? 'var(--accent)' : 'var(--bg-primary)',
+                    color: formScheduleType === "weekly" ? 'white' : 'var(--text-secondary)',
+                    border: '0.5px solid var(--border-primary)',
+                    borderLeft: 'none',
+                    borderRadius: '0 4px 4px 0',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                  }}
+                >
+                  Days of week
+                </button>
+              </div>
+            </div>
+
+            {formScheduleType === "interval" ? (
+              <div>
+                <label style={labelStyle}>Repeat every (days)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="90"
+                  value={formIntervalDays}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    if (value.length > 1 && value.startsWith('0')) {
+                      value = value.replace(/^0+/, '');
+                    }
+                    setFormIntervalDays(Number(value) || 0);
+                  }}
+                  style={{
+                    ...inputStyle,
+                    fontFamily: 'var(--font-geist-mono)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+                />
+              </div>
+            ) : (
+              <div>
+                <label style={labelStyle}>Days of week</label>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {DAY_LABELS.map((label, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => toggleWeekDay(index)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 4px',
+                        background: formWeekDays.includes(index) ? 'var(--accent)' : 'var(--bg-primary)',
+                        color: formWeekDays.includes(index) ? 'white' : 'var(--text-secondary)',
+                        border: '0.5px solid var(--border-primary)',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Time of day</label>
+                <select
+                  value={formPreferredHour}
+                  onChange={(e) => setFormPreferredHour(Number(e.target.value))}
+                  style={selectStyle}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{formatHour(i)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Timezone</label>
+                <select
+                  value={formTimezone}
+                  onChange={(e) => setFormTimezone(e.target.value)}
+                  style={selectStyle}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+                >
+                  {timezoneOptions.map((tz) => (
+                    <option key={tz.value} value={tz.value}>{tz.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
@@ -572,7 +741,8 @@ export default function SchedulesPage() {
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Name</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Categories</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Email</th>
-                    <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Interval</th>
+                    <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Schedule</th>
+                    <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Time</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Status</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Next Run</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Runs</th>
@@ -589,7 +759,10 @@ export default function SchedulesPage() {
                       <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '12px' }}>
                         {schedule.email || <span style={{ fontStyle: 'italic', color: 'var(--text-tertiary)' }}>None</span>}
                       </td>
-                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)' }}>{getIntervalLabel(schedule.intervalDays)}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)' }}>{getScheduleLabel(schedule)}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                        {getTimeLabel(schedule)}
+                      </td>
                       <td style={{ padding: '12px 8px' }}>
                         <span style={{
                           padding: '2px 8px',

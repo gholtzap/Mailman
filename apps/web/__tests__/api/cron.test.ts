@@ -276,9 +276,11 @@ describe('/api/cron/process-schedules', () => {
         status: 'active',
         nextRunAt: pastDate,
         intervalDays: 14,
+        preferredHour: 6,
+        timezone: 'UTC',
       })
 
-      const beforeRun = Date.now()
+      const beforeRun = new Date()
 
       const request = new Request('http://localhost/api/cron/process-schedules', {
         headers: {
@@ -291,10 +293,44 @@ describe('/api/cron/process-schedules', () => {
       const db = getTestDb()
       const updatedSchedule = await db.collection('recurring_schedules').findOne({ _id: schedule._id })
 
-      const expectedNextRun = beforeRun + (14 * 24 * 60 * 60 * 1000)
-      const nextRunTime = updatedSchedule?.nextRunAt.getTime() || 0
+      const nextRun = updatedSchedule?.nextRunAt as Date
+      expect(nextRun).toBeDefined()
+      expect(nextRun.getUTCHours()).toBe(6)
 
-      expect(Math.abs(nextRunTime - expectedNextRun)).toBeLessThan(5000)
+      const dayDiff = Math.round((nextRun.getTime() - beforeRun.getTime()) / (24 * 60 * 60 * 1000))
+      expect(dayDiff).toBeGreaterThanOrEqual(13)
+      expect(dayDiff).toBeLessThanOrEqual(15)
+    })
+
+    it('should calculate next run for weekly schedule', async () => {
+      const user = await createTestUser(client)
+      const pastDate = new Date(Date.now() - 3600000)
+      const schedule = await createTestSchedule(client, user._id!.toString(), {
+        status: 'active',
+        nextRunAt: pastDate,
+        scheduleType: 'weekly',
+        weekDays: [1, 3, 5],
+        intervalDays: 7,
+        preferredHour: 9,
+        timezone: 'UTC',
+      })
+
+      const request = new Request('http://localhost/api/cron/process-schedules', {
+        headers: {
+          authorization: `Bearer ${CRON_SECRET}`,
+        },
+      })
+
+      const response = await GET(request)
+
+      const db = getTestDb()
+      const updatedSchedule = await db.collection('recurring_schedules').findOne({ _id: schedule._id })
+
+      const nextRun = updatedSchedule?.nextRunAt as Date
+      expect(nextRun).toBeDefined()
+      expect(nextRun.getUTCHours()).toBe(9)
+      expect([1, 3, 5]).toContain(nextRun.getUTCDay())
+      expect(nextRun.getTime()).toBeGreaterThan(Date.now())
     })
   })
 })

@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { getRecurringSchedulesCollection, getProcessingJobsCollection, getUsersCollection } from "@/lib/db/collections";
 import { processBatchScrape } from "@/lib/processing/batch";
+import { computeNextRunAt } from "@/lib/scheduling/next-run";
 import { createLogger } from "@/lib/logging";
 
 export const maxDuration = 300;
@@ -102,8 +103,14 @@ export async function GET(request: Request) {
           })
         );
 
-        const nextRunAt = new Date(now);
-        nextRunAt.setDate(nextRunAt.getDate() + schedule.intervalDays);
+        const nextRunAt = computeNextRunAt({
+          scheduleType: schedule.scheduleType ?? "interval",
+          intervalDays: schedule.intervalDays,
+          weekDays: schedule.weekDays ?? [],
+          preferredHour: schedule.preferredHour ?? 6,
+          timezone: schedule.timezone ?? "UTC",
+          afterDate: now,
+        });
 
         await schedules.updateOne(
           { _id: schedule._id },

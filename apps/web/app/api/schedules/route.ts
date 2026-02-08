@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getUsersCollection, getRecurringSchedulesCollection } from "@/lib/db/collections";
+import { validateScheduleFields } from "@/lib/scheduling/validation";
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -41,9 +42,31 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, categories, papersPerCategory, intervalDays, email, keywords, keywordMatchMode } = body;
+    const {
+      name,
+      categories,
+      papersPerCategory,
+      intervalDays,
+      email,
+      keywords,
+      keywordMatchMode,
+      scheduleType,
+      weekDays,
+      preferredHour,
+      timezone,
+    } = body;
 
-    if (!name || !categories || categories.length === 0 || !papersPerCategory || !intervalDays) {
+    const effectiveScheduleType = scheduleType ?? "interval";
+    const effectiveIntervalDays = effectiveScheduleType === "weekly" ? 7 : intervalDays;
+
+    if (!name || !categories || categories.length === 0 || !papersPerCategory) {
+      return NextResponse.json(
+        { error: "Missing required fields: name, categories, papersPerCategory" },
+        { status: 400 }
+      );
+    }
+
+    if (effectiveScheduleType === "interval" && !effectiveIntervalDays) {
       return NextResponse.json(
         { error: "Missing required fields: name, categories, papersPerCategory, intervalDays" },
         { status: 400 }
@@ -57,11 +80,16 @@ export async function POST(request: Request) {
       );
     }
 
-    if (![1, 3, 7, 14, 30].includes(intervalDays)) {
-      return NextResponse.json(
-        { error: "intervalDays must be one of: 1, 3, 7, 14, 30" },
-        { status: 400 }
-      );
+    const validationError = validateScheduleFields({
+      scheduleType: effectiveScheduleType,
+      intervalDays: effectiveIntervalDays,
+      weekDays,
+      preferredHour,
+      timezone,
+    });
+
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
     if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
@@ -86,13 +114,20 @@ export async function POST(request: Request) {
       name,
       categories,
       papersPerCategory,
-      intervalDays,
+      intervalDays: effectiveIntervalDays,
+      scheduleType: effectiveScheduleType,
+      preferredHour: preferredHour ?? 6,
+      timezone: timezone ?? "UTC",
       status: "active",
       nextRunAt: now,
       runCount: 0,
       createdAt: now,
       updatedAt: now,
     };
+
+    if (effectiveScheduleType === "weekly" && weekDays) {
+      scheduleData.weekDays = weekDays;
+    }
 
     if (email) {
       scheduleData.email = email;

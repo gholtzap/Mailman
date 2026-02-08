@@ -100,6 +100,10 @@ export interface RecurringSchedule {
   keywordMatchMode?: "any" | "all";
   papersPerCategory: number;
   intervalDays: number;
+  scheduleType?: "interval" | "weekly";
+  weekDays?: number[];
+  preferredHour?: number;
+  timezone?: string;
   email?: string;
   status: "active" | "paused";
   nextRunAt: Date;

@@ -189,7 +189,7 @@ describe('/api/schedules', () => {
           name: 'Test Schedule',
           categories: ['cs.AI'],
           papersPerCategory: 5,
-          intervalDays: 5,
+          intervalDays: 100,
         }),
       })
 
@@ -197,7 +197,121 @@ describe('/api/schedules', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('intervalDays must be one of: 1, 3, 7, 14, 30')
+      expect(data.error).toBe('intervalDays must be an integer between 1 and 90')
+    })
+
+    it('should accept any intervalDays between 1 and 90', async () => {
+      const user = await createTestUser(client)
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/schedules', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Test Schedule 5 days',
+          categories: ['cs.AI'],
+          papersPerCategory: 5,
+          intervalDays: 5,
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.schedule.intervalDays).toBe(5)
+    })
+
+    it('should create a weekly schedule', async () => {
+      const user = await createTestUser(client)
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/schedules', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Weekly Monday Wednesday',
+          categories: ['cs.AI'],
+          papersPerCategory: 3,
+          scheduleType: 'weekly',
+          weekDays: [1, 3],
+          preferredHour: 9,
+          timezone: 'America/New_York',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.schedule.scheduleType).toBe('weekly')
+      expect(data.schedule.weekDays).toEqual([1, 3])
+      expect(data.schedule.preferredHour).toBe(9)
+      expect(data.schedule.timezone).toBe('America/New_York')
+      expect(data.schedule.intervalDays).toBe(7)
+    })
+
+    it('should return 400 for weekly schedule without weekDays', async () => {
+      const user = await createTestUser(client)
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/schedules', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Bad Weekly',
+          categories: ['cs.AI'],
+          papersPerCategory: 3,
+          scheduleType: 'weekly',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toContain('weekDays')
+    })
+
+    it('should return 400 for invalid timezone', async () => {
+      const user = await createTestUser(client)
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/schedules', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Bad Timezone',
+          categories: ['cs.AI'],
+          papersPerCategory: 3,
+          intervalDays: 1,
+          timezone: 'Invalid/Timezone',
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Invalid timezone')
+    })
+
+    it('should return 400 for invalid preferredHour', async () => {
+      const user = await createTestUser(client)
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/schedules', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Bad Hour',
+          categories: ['cs.AI'],
+          papersPerCategory: 3,
+          intervalDays: 1,
+          preferredHour: 25,
+        }),
+      })
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toContain('preferredHour')
     })
 
     it('should create a new schedule', async () => {
