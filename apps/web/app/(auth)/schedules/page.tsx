@@ -24,10 +24,20 @@ export default function SchedulesPage() {
   const [formPapersPerCategory, setFormPapersPerCategory] = useState(5);
   const [formIntervalDays, setFormIntervalDays] = useState(1);
   const [formEmail, setFormEmail] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
     fetchSchedules();
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.email) {
+          setUserEmail(data.email);
+          setFormEmail(data.email);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const fetchSchedules = async () => {
@@ -70,7 +80,7 @@ export default function SchedulesPage() {
         setFormCategories([]);
         setFormPapersPerCategory(5);
         setFormIntervalDays(1);
-        setFormEmail("");
+        setFormEmail(userEmail);
         await fetchSchedules();
       } else {
         const error = await res.json();
@@ -121,7 +131,7 @@ export default function SchedulesPage() {
         setFormCategories([]);
         setFormPapersPerCategory(5);
         setFormIntervalDays(1);
-        setFormEmail("");
+        setFormEmail(userEmail);
         await fetchSchedules();
       } else {
         const error = await res.json();
@@ -140,7 +150,7 @@ export default function SchedulesPage() {
     setFormCategories([]);
     setFormPapersPerCategory(5);
     setFormIntervalDays(1);
-    setFormEmail("");
+    setFormEmail(userEmail);
   };
 
   const toggleCategory = (categoryId: string) => {
