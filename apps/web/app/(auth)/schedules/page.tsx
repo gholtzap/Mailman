@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { RecurringSchedule } from "@/lib/types";
 import { ARXIV_CATEGORIES } from "@/lib/arxiv-categories";
+import Modal from "@/app/components/Modal";
 
 const COMMON_TIMEZONES = [
   { value: "Pacific/Honolulu", label: "Hawaii (HST)" },
@@ -113,6 +114,7 @@ export default function SchedulesPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<RecurringSchedule | null>(null);
 
   const [formScheduleType, setFormScheduleType] = useState<"interval" | "weekly">("interval");
   const [formWeekDays, setFormWeekDays] = useState<number[]>([]);
@@ -319,7 +321,7 @@ export default function SchedulesPage() {
   };
 
   const handleDelete = async (schedule: RecurringSchedule) => {
-    if (!confirm(`Are you sure you want to delete "${schedule.name}"?`)) return;
+    setDeleteTarget(null);
 
     try {
       const res = await fetch(`/api/schedules/${schedule._id!.toString()}`, {
@@ -847,7 +849,7 @@ export default function SchedulesPage() {
                             {schedule.status === 'active' ? 'Pause' : 'Resume'}
                           </button>
                           <button
-                            onClick={() => handleDelete(schedule)}
+                            onClick={() => setDeleteTarget(schedule)}
                             style={{
                               padding: '4px 8px',
                               background: 'rgba(239, 68, 68, 0.1)',
@@ -892,6 +894,54 @@ export default function SchedulesPage() {
           {message}
         </div>
       )}
+
+      <Modal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Schedule"
+      >
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+          Are you sure you want to delete <strong style={{ color: 'var(--text-primary)' }}>{deleteTarget?.name}</strong>? This action cannot be undone.
+        </p>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setDeleteTarget(null)}
+            style={{
+              padding: '8px 16px',
+              background: 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
+              border: '0.5px solid var(--border-primary)',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => deleteTarget && handleDelete(deleteTarget)}
+            style={{
+              padding: '8px 16px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              color: 'rgb(239, 68, 68)',
+              border: '0.5px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+          >
+            Delete
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
