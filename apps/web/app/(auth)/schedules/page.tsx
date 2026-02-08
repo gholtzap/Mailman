@@ -776,7 +776,9 @@ export default function SchedulesPage() {
                         </span>
                       </td>
                       <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontFamily: 'var(--font-geist-mono)', fontSize: '12px' }}>
-                        {formatDate(schedule.nextRunAt)}
+                        {schedule.runCount === 0
+                          ? "Pending first run"
+                          : formatDate(schedule.nextRunAt)}
                       </td>
                       <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontFamily: 'var(--font-geist-mono)' }}>
                         {schedule.runCount}
