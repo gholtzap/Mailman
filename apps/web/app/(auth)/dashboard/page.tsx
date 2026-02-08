@@ -205,47 +205,36 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <Link href="/batch" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '8px 12px',
-            background: 'var(--bg-tertiary)',
-            border: '0.5px solid var(--border-primary)',
-            color: 'var(--text-secondary)',
-            borderRadius: '4px',
-            fontSize: '13px',
-            fontWeight: 500,
-            textDecoration: 'none',
-            transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-            minHeight: '44px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--bg-elevated)';
-            e.currentTarget.style.color = 'var(--text-primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--bg-tertiary)';
-            e.currentTarget.style.color = 'var(--text-secondary)';
-          }}>
-            Batch Process
-          </Link>
-          <Link href="/papers/new" style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '8px 12px',
-            background: 'var(--accent)',
-            color: 'white',
-            borderRadius: '4px',
-            fontSize: '13px',
-            fontWeight: 500,
-            textDecoration: 'none',
-            transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-            minHeight: '44px'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--accent-hover)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'var(--accent)'}>
-            New Paper
-          </Link>
+          {[
+            { href: '/batch', label: '+Batch' },
+            { href: '/schedules', label: '+Schedule' },
+            { href: '/papers/new', label: '+Paper' },
+          ].map(({ href, label }) => (
+            <Link key={href} href={href} style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '8px 12px',
+              background: 'var(--bg-tertiary)',
+              border: '0.5px solid var(--border-primary)',
+              color: 'var(--text-secondary)',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              textDecoration: 'none',
+              transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+              minHeight: '44px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--bg-elevated)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--bg-tertiary)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}>
+              {label}
+            </Link>
+          ))}
         </div>
       </div>
 
