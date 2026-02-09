@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import StatusBadge from "../StatusBadge";
 
 interface ProcessedPaper {
   _id: string;
@@ -283,31 +284,6 @@ export default function PaperDetailPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const colors = {
-    completed: { bg: 'var(--success-muted)', text: 'var(--success)' },
-    failed: { bg: 'var(--error-muted)', text: 'var(--error)' },
-    processing: { bg: 'var(--warning-muted)', text: 'var(--warning)' },
-    pending: { bg: 'var(--bg-tertiary)', text: 'var(--text-muted)' }
-  };
-
-  const color = colors[status as keyof typeof colors] || colors.pending;
-
-  return (
-    <span style={{
-      display: 'inline-block',
-      padding: '3px 8px',
-      background: color.bg,
-      color: color.text,
-      fontSize: '11px',
-      fontWeight: 500,
-      borderRadius: '4px'
-    }}>
-      {status}
-    </span>
   );
 }
 

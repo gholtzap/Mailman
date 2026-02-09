@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import StatusBadge from "../papers/StatusBadge";
 
 interface Paper {
   _id: string;
@@ -511,27 +512,3 @@ function RecentTimeline({ recentPapers, recentJobs }: { recentPapers: Paper[]; r
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const colors = {
-    completed: { bg: 'var(--success-muted)', text: 'var(--success)' },
-    failed: { bg: 'var(--error-muted)', text: 'var(--error)' },
-    processing: { bg: 'var(--warning-muted)', text: 'var(--warning)' },
-    pending: { bg: 'var(--bg-tertiary)', text: 'var(--text-muted)' }
-  };
-
-  const color = colors[status as keyof typeof colors] || colors.pending;
-
-  return (
-    <span style={{
-      display: 'inline-block',
-      padding: '2px 6px',
-      background: color.bg,
-      color: color.text,
-      fontSize: '11px',
-      fontWeight: 500,
-      borderRadius: '3px'
-    }}>
-      {status}
-    </span>
-  );
-}

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DndContext, closestCenter, pointerWithin, DragOverlay, CollisionDetection, DragStartEvent, DragEndEvent, PointerSensor, useSensors, useSensor } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
@@ -13,8 +12,11 @@ const customCollisionDetection: CollisionDetection = (args) => {
   return closestCenter(args);
 };
 import FolderSidebar from "./FolderSidebar";
-import PaperCard from "./PaperCard";
 import PaperPanel from "./PaperPanel";
+import PapersToolbar from "./PapersToolbar";
+import PaperListView from "./PaperListView";
+import PaperGridView from "./PaperGridView";
+import ContextMenu from "./ContextMenu";
 
 interface Folder {
   _id: string;
@@ -40,16 +42,39 @@ interface Paper {
   };
 }
 
+interface ContextMenuState {
+  x: number;
+  y: number;
+  paperId: string;
+}
+
+function getStoredViewMode(): "list" | "grid" {
+  if (typeof window === "undefined") return "list";
+  const stored = localStorage.getItem("papers-view-mode");
+  return stored === "grid" ? "grid" : "list";
+}
+
 export default function PapersPage() {
   const [papers, setPapers] = useState<Paper[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [retrying, setRetrying] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
+
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [sortField, setSortField] = useState("createdAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const lastSelectedIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    setViewMode(getStoredViewMode());
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -61,12 +86,15 @@ export default function PapersPage() {
     const params = new URLSearchParams();
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (selectedFolderId) params.set("folderId", selectedFolderId);
+    if (sortField) params.set("sort", sortField);
+    if (sortDirection) params.set("sortDirection", sortDirection);
+    if (searchQuery) params.set("search", searchQuery);
 
     const url = params.toString() ? `/api/papers?${params}` : "/api/papers";
     const res = await fetch(url);
     const data = await res.json();
     setPapers(data.papers);
-  }, [statusFilter, selectedFolderId]);
+  }, [statusFilter, selectedFolderId, sortField, sortDirection, searchQuery]);
 
   const fetchFolders = useCallback(async () => {
     const res = await fetch("/api/folders");
@@ -83,35 +111,142 @@ export default function PapersPage() {
   }, [fetchPapers]);
 
   useEffect(() => {
-    if (!selectedPaperId) return;
+    setSelectedIds(new Set());
+    lastSelectedIndex.current = null;
+  }, [selectedFolderId, statusFilter, searchQuery]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedPaperId(null);
+      if (e.key === "Escape") {
+        if (contextMenu) {
+          setContextMenu(null);
+        } else if (selectedIds.size > 0) {
+          setSelectedIds(new Set());
+        } else if (selectedPaperId) {
+          setSelectedPaperId(null);
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "a" && !isInputFocused()) {
+        e.preventDefault();
+        setSelectedIds(new Set(papers.map((p) => p._id)));
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedPaperId]);
+  }, [selectedPaperId, contextMenu, selectedIds, papers]);
 
-  const retryPaper = async (paperId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setRetrying(paperId);
-    try {
-      const res = await fetch("/api/processing/single", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paperId }),
-      });
-      if (res.ok) {
-        await fetchPapers();
-      } else {
-        const error = await res.json();
-        alert(`Failed to retry: ${error.details || error.error}`);
-      }
-    } catch {
-      alert("An error occurred while retrying");
-    } finally {
-      setRetrying(null);
+  const handleViewModeChange = (mode: "list" | "grid") => {
+    setViewMode(mode);
+    localStorage.setItem("papers-view-mode", mode);
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
     }
+  };
+
+  const handleToggleSelect = (id: string, shiftKey: boolean) => {
+    if (shiftKey && lastSelectedIndex.current !== null) {
+      const currentIndex = papers.findIndex((p) => p._id === id);
+      if (currentIndex === -1) return;
+      const start = Math.min(lastSelectedIndex.current, currentIndex);
+      const end = Math.max(lastSelectedIndex.current, currentIndex);
+      const rangeIds = papers.slice(start, end + 1).map((p) => p._id);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        rangeIds.forEach((rid) => next.add(rid));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+      lastSelectedIndex.current = papers.findIndex((p) => p._id === id);
+    }
+  };
+
+  const handleSelectAll = () => {
+    const allSelected = papers.every((p) => selectedIds.has(p._id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(papers.map((p) => p._id)));
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, paperId: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, paperId });
+  };
+
+  const handleMoveToFolder = async (paperId: string, folderId: string | null) => {
+    await fetch(`/api/papers/${paperId}/folder`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId }),
+    });
+    await fetchPapers();
+  };
+
+  const handleRetryPaper = async (paperId: string) => {
+    const paper = papers.find((p) => p._id === paperId);
+    if (!paper) return;
+    await fetch("/api/processing/single", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paperId: paper.paperId }),
+    });
+    await fetchPapers();
+  };
+
+  const handleDeletePaper = async (paperId: string) => {
+    await fetch(`/api/papers/${paperId}`, { method: "DELETE" });
+    await fetchPapers();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(paperId);
+      return next;
+    });
+  };
+
+  const handleBulkMove = async (folderId: string | null) => {
+    await fetch("/api/papers/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "move", paperIds: Array.from(selectedIds), folderId }),
+    });
+    setSelectedIds(new Set());
+    await fetchPapers();
+  };
+
+  const handleBulkDelete = async () => {
+    await fetch("/api/papers/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", paperIds: Array.from(selectedIds) }),
+    });
+    setSelectedIds(new Set());
+    await fetchPapers();
+  };
+
+  const handleBulkRetry = async () => {
+    await fetch("/api/papers/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "retry", paperIds: Array.from(selectedIds) }),
+    });
+    setSelectedIds(new Set());
+    await fetchPapers();
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -127,10 +262,10 @@ export default function PapersPage() {
     const { active, over } = event;
     if (!over) return;
 
-    const activeId = String(active.id);
+    const dragActiveId = String(active.id);
     const overId = String(over.id);
 
-    const activeIsFolderIdx = folders.findIndex((f) => f._id === activeId);
+    const activeIsFolderIdx = folders.findIndex((f) => f._id === dragActiveId);
     if (activeIsFolderIdx !== -1) {
       const overIdx = folders.findIndex((f) => f._id === overId);
       if (overIdx === -1 || activeIsFolderIdx === overIdx) return;
@@ -150,7 +285,7 @@ export default function PapersPage() {
       return;
     }
 
-    const paperId = activeId;
+    const paperId = dragActiveId;
 
     if (overId === "unfiled") {
       await fetch(`/api/papers/${paperId}/folder`, {
@@ -179,11 +314,11 @@ export default function PapersPage() {
     }
   };
 
-  const getFolderColor = (paper: Paper): string | undefined => {
-    if (!paper.folderId) return undefined;
-    const folder = folders.find((f) => f._id === paper.folderId);
-    return folder?.color;
-  };
+  const currentFolderName = selectedFolderId && selectedFolderId !== "unfiled"
+    ? folders.find((f) => f._id === selectedFolderId)?.name || null
+    : null;
+
+  const hasFailedSelected = papers.some((p) => selectedIds.has(p._id) && (p.status === "failed" || p.status === "pending"));
 
   if (loading) {
     return (
@@ -192,6 +327,12 @@ export default function PapersPage() {
       </div>
     );
   }
+
+  const emptyMessage = searchQuery
+    ? "No papers match your search."
+    : selectedFolderId
+      ? "No papers in this folder."
+      : "No papers yet. Add one to get started.";
 
   return (
     <DndContext
@@ -254,80 +395,25 @@ export default function PapersPage() {
           )}
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-              <h1 style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
-                Papers
-              </h1>
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="md:hidden"
-                style={{
-                  background: "var(--bg-tertiary)",
-                  border: "0.5px solid var(--border-primary)",
-                  borderRadius: "4px",
-                  color: "var(--text-secondary)",
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  padding: "4px 8px",
-                  minHeight: "32px",
-                }}
-              >
-                Folders
-              </button>
-              <Link href="/papers/new" style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "6px 10px",
-                background: "var(--accent)",
-                color: "white",
-                borderRadius: "4px",
-                fontSize: "13px",
-                fontWeight: 500,
-                textDecoration: "none",
-                transition: "background 150ms cubic-bezier(0.25, 1, 0.5, 1)",
-                marginLeft: "auto",
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "var(--accent-hover)"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "var(--accent)"}>
-                New Paper
-              </Link>
-            </div>
-            <div style={{ marginBottom: "24px" }}>
-              <div className="flex gap-2 flex-wrap">
-                {["all", "pending", "processing", "completed", "failed"].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "4px",
-                      fontSize: "13px",
-                      fontWeight: 500,
-                      border: "0.5px solid var(--border-primary)",
-                      background: statusFilter === status ? "var(--accent)" : "var(--bg-tertiary)",
-                      color: statusFilter === status ? "white" : "var(--text-secondary)",
-                      cursor: "pointer",
-                      transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
-                      minHeight: "44px",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (statusFilter !== status) {
-                        e.currentTarget.style.background = "var(--bg-elevated)";
-                        e.currentTarget.style.color = "var(--text-primary)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (statusFilter !== status) {
-                        e.currentTarget.style.background = "var(--bg-tertiary)";
-                        e.currentTarget.style.color = "var(--text-secondary)";
-                      }
-                    }}
-                  >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <PapersToolbar
+              selectedFolderId={selectedFolderId}
+              folders={folders}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
+              selectedCount={selectedIds.size}
+              hasFailedSelected={hasFailedSelected}
+              onBulkMove={handleBulkMove}
+              onBulkDelete={handleBulkDelete}
+              onBulkRetry={handleBulkRetry}
+              onClearSelection={() => setSelectedIds(new Set())}
+              onNavigateToRoot={() => setSelectedFolderId(null)}
+              folderName={currentFolderName}
+              onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            />
 
             {papers.length === 0 ? (
               <div style={{
@@ -339,32 +425,30 @@ export default function PapersPage() {
                 fontSize: "13px",
                 color: "var(--text-muted)",
               }}>
-                No papers found.
+                {emptyMessage}
               </div>
+            ) : viewMode === "list" ? (
+              <PaperListView
+                papers={papers}
+                folders={folders}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onSelectAll={handleSelectAll}
+                onSelect={setSelectedPaperId}
+                onContextMenu={handleContextMenu}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+              />
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {papers.map((paper) => (
-                  <PaperCard
-                    key={paper._id}
-                    paper={paper}
-                    folderColor={getFolderColor(paper)}
-                    onRetry={retryPaper}
-                    onSelect={(id) => setSelectedPaperId(id)}
-                    onFolderAssigned={(paperId, folderId) => {
-                      setPapers((prev) =>
-                        prev.map((p) =>
-                          p._id === paperId ? { ...p, folderId: folderId ?? undefined } : p
-                        )
-                      );
-                      if (selectedFolderId && selectedFolderId !== folderId) {
-                        setPapers((prev) => prev.filter((p) => p._id !== paperId));
-                      }
-                    }}
-                    isRetrying={retrying === paper._id}
-                    folders={folders}
-                  />
-                ))}
-              </div>
+              <PaperGridView
+                papers={papers}
+                folders={folders}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onSelect={setSelectedPaperId}
+                onContextMenu={handleContextMenu}
+              />
             )}
           </div>
 
@@ -397,6 +481,33 @@ export default function PapersPage() {
           </div>
         ) : null}
       </DragOverlay>
+
+      {contextMenu && (() => {
+        const paper = papers.find((p) => p._id === contextMenu.paperId);
+        if (!paper) return null;
+        return (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            paperId={contextMenu.paperId}
+            paperStatus={paper.status}
+            paperFolderId={paper.folderId}
+            folders={folders}
+            onClose={() => setContextMenu(null)}
+            onOpen={(id) => setSelectedPaperId(id)}
+            onMove={handleMoveToFolder}
+            onRetry={handleRetryPaper}
+            onDelete={handleDeletePaper}
+          />
+        );
+      })()}
     </DndContext>
   );
+}
+
+function isInputFocused(): boolean {
+  const active = document.activeElement;
+  if (!active) return false;
+  const tag = active.tagName.toLowerCase();
+  return tag === "input" || tag === "textarea" || tag === "select" || (active as HTMLElement).isContentEditable;
 }
