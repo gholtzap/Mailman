@@ -496,21 +496,22 @@ export default function SchedulesPage() {
                 type="number"
                 min="1"
                 max="20"
-                value={formPapersPerCategory}
+                value={formPapersPerCategory || ''}
                 onChange={(e) => {
-                  let value = e.target.value;
-                  if (value.length > 1 && value.startsWith('0')) {
-                    value = value.replace(/^0+/, '');
-                  }
-                  setFormPapersPerCategory(Number(value) || 0);
+                  const parsed = parseInt(e.target.value, 10);
+                  setFormPapersPerCategory(isNaN(parsed) ? 0 : Math.min(parsed, 20));
                 }}
                 style={{
                   ...inputStyle,
                   fontFamily: 'var(--font-geist-mono)',
                   fontVariantNumeric: 'tabular-nums',
                 }}
+                placeholder="5"
                 onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-primary)';
+                  if (!formPapersPerCategory) setFormPapersPerCategory(1);
+                }}
               />
             </div>
 

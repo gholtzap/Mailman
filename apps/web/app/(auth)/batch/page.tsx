@@ -313,13 +313,10 @@ export default function BatchScrapePage() {
             type="number"
             min="1"
             max="20"
-            value={papersPerCategory}
+            value={papersPerCategory || ''}
             onChange={(e) => {
-              let value = e.target.value;
-              if (value.length > 1 && value.startsWith('0')) {
-                value = value.replace(/^0+/, '');
-              }
-              setPapersPerCategory(Number(value) || 0);
+              const parsed = parseInt(e.target.value, 10);
+              setPapersPerCategory(isNaN(parsed) ? 0 : Math.min(parsed, 20));
             }}
             style={{
               width: '100%',
@@ -333,8 +330,12 @@ export default function BatchScrapePage() {
               fontVariantNumeric: 'tabular-nums',
               outline: 'none'
             }}
+            placeholder="5"
             onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = 'var(--border-primary)';
+              if (!papersPerCategory) setPapersPerCategory(1);
+            }}
           />
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px', fontFamily: 'var(--font-geist-mono)' }}>
             Total papers to process: {selectedCategories.length * papersPerCategory}
