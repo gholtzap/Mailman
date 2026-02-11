@@ -26,28 +26,6 @@ export async function GET(request: Request) {
 
     const now = new Date();
 
-    const allActive = await schedules
-      .find({ status: "active" })
-      .project({ _id: 1, name: 1, nextRunAt: 1, status: 1, runCount: 1 })
-      .limit(20)
-      .toArray();
-
-    log.info(
-      {
-        now: now.toISOString(),
-        activeCount: allActive.length,
-        activeSchedules: allActive.map((s) => ({
-          id: s._id,
-          name: s.name,
-          nextRunAt: s.nextRunAt,
-          nextRunAtType: typeof s.nextRunAt,
-          nextRunAtIsDate: s.nextRunAt instanceof Date,
-          isDue: s.nextRunAt && s.nextRunAt <= now,
-        })),
-      },
-      "Diagnostic: active schedules state"
-    );
-
     const dueSchedules = await schedules
       .find({
         status: "active",
@@ -67,20 +45,6 @@ export async function GET(request: Request) {
 
         if (!user) {
           scheduleLog.warn("User not found, skipping schedule");
-          continue;
-        }
-
-        if (!user.apiKey) {
-          scheduleLog.warn("User has no API key, pausing schedule");
-          await schedules.updateOne(
-            { _id: schedule._id },
-            { $set: { status: "paused", updatedAt: new Date() } }
-          );
-          results.push({
-            scheduleId: schedule._id,
-            status: "paused",
-            reason: "No API key configured",
-          });
           continue;
         }
 
@@ -168,29 +132,10 @@ export async function GET(request: Request) {
 
     log.info({ processed: results.length }, "Completed schedule processing");
 
-    const diagnostic = {
-      now: now.toISOString(),
-      activeCount: allActive.length,
-      activeSchedules: allActive.map((s) => ({
-        id: s._id,
-        name: s.name,
-        nextRunAt: s.nextRunAt,
-        nextRunAtType: typeof s.nextRunAt,
-        nextRunAtIsDate: s.nextRunAt instanceof Date,
-        nextRunAtISOString:
-          s.nextRunAt instanceof Date
-            ? s.nextRunAt.toISOString()
-            : String(s.nextRunAt),
-        isDue: s.nextRunAt instanceof Date && s.nextRunAt <= now,
-      })),
-      dueCount: dueSchedules.length,
-    };
-
     return NextResponse.json({
       success: true,
       processed: results.length,
       results,
-      diagnostic,
     });
   } catch (error) {
     log.error({ err: error }, "Cron job failed");
