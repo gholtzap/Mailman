@@ -16,3 +16,5 @@ packages/processing/.env
 
 outputs/
 .processed_papers.json
+.vercel
+.env*.local

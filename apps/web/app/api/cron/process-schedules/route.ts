@@ -168,10 +168,29 @@ export async function GET(request: Request) {
 
     log.info({ processed: results.length }, "Completed schedule processing");
 
+    const diagnostic = {
+      now: now.toISOString(),
+      activeCount: allActive.length,
+      activeSchedules: allActive.map((s) => ({
+        id: s._id,
+        name: s.name,
+        nextRunAt: s.nextRunAt,
+        nextRunAtType: typeof s.nextRunAt,
+        nextRunAtIsDate: s.nextRunAt instanceof Date,
+        nextRunAtISOString:
+          s.nextRunAt instanceof Date
+            ? s.nextRunAt.toISOString()
+            : String(s.nextRunAt),
+        isDue: s.nextRunAt instanceof Date && s.nextRunAt <= now,
+      })),
+      dueCount: dueSchedules.length,
+    };
+
     return NextResponse.json({
       success: true,
       processed: results.length,
       results,
+      diagnostic,
     });
   } catch (error) {
     log.error({ err: error }, "Cron job failed");
