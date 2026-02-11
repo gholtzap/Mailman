@@ -25,6 +25,29 @@ export async function GET(request: Request) {
     const jobs = await getProcessingJobsCollection();
 
     const now = new Date();
+
+    const allActive = await schedules
+      .find({ status: "active" })
+      .project({ _id: 1, name: 1, nextRunAt: 1, status: 1, runCount: 1 })
+      .limit(20)
+      .toArray();
+
+    log.info(
+      {
+        now: now.toISOString(),
+        activeCount: allActive.length,
+        activeSchedules: allActive.map((s) => ({
+          id: s._id,
+          name: s.name,
+          nextRunAt: s.nextRunAt,
+          nextRunAtType: typeof s.nextRunAt,
+          nextRunAtIsDate: s.nextRunAt instanceof Date,
+          isDue: s.nextRunAt && s.nextRunAt <= now,
+        })),
+      },
+      "Diagnostic: active schedules state"
+    );
+
     const dueSchedules = await schedules
       .find({
         status: "active",
