@@ -54,7 +54,7 @@ async function fetchArxivPapers(
   category: string,
   maxResults: number
 ): Promise<ArxivPaper[]> {
-  const url = `http://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
+  const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
   const response = await fetch(url);
 
   if (!response.ok) {
