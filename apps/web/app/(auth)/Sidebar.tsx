@@ -88,7 +88,7 @@ export function Sidebar() {
       )}
 
       <aside
-        className={`fixed md:relative top-0 md:top-auto h-screen md:h-auto z-50 md:z-auto md:left-0 ${mobileMenuOpen ? 'left-0' : '-left-[200px]'}`}
+        className={`fixed md:sticky top-0 h-screen z-50 md:z-auto md:left-0 ${mobileMenuOpen ? 'left-0' : '-left-[200px]'}`}
         style={{
           width: collapsed ? '0px' : '200px',
           background: 'var(--bg-secondary)',
