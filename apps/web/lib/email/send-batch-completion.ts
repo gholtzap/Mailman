@@ -101,7 +101,7 @@ export async function sendBatchCompletionEmail({
     "Sending batch completion email"
   );
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to: notificationEmail,
     subject: `${validPaperSummaries.length} Paper Summaries Ready - ${scheduleName}`,
@@ -109,8 +109,12 @@ export async function sendBatchCompletionEmail({
     text: textEmail,
   });
 
+  if (error) {
+    throw new Error(`Resend API error: ${error.message}`);
+  }
+
   log.info(
-    { recipientEmail: notificationEmail, paperCount: validPaperSummaries.length },
+    { recipientEmail: notificationEmail, paperCount: validPaperSummaries.length, emailId: data?.id },
     "Email sent successfully"
   );
 
