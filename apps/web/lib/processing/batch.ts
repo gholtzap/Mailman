@@ -299,15 +299,31 @@ export async function processBatchScrape({
 
     if (notificationEmail) {
       try {
-        await sendBatchCompletionEmail({
+        const emailResult = await sendBatchCompletionEmail({
           jobId,
           notificationEmail,
           scheduleName,
           categories,
         });
+        log.info({ emailResult, notificationEmail }, "Email send completed");
+        await jobs.updateOne(
+          { _id: new ObjectId(jobId) },
+          { $set: { emailResult: { ...emailResult, notificationEmail, attemptedAt: new Date() } } }
+        );
       } catch (emailError) {
-        log.error({ err: emailError }, "Failed to send batch completion email");
+        const message = emailError instanceof Error ? emailError.message : String(emailError);
+        log.error({ err: emailError, errorMessage: message }, "Failed to send batch completion email");
+        await jobs.updateOne(
+          { _id: new ObjectId(jobId) },
+          { $set: { emailResult: { error: message, notificationEmail, attemptedAt: new Date() } } }
+        );
       }
+    } else {
+      log.warn("No notificationEmail provided, skipping email");
+      await jobs.updateOne(
+        { _id: new ObjectId(jobId) },
+        { $set: { emailResult: { skipped: true, reason: "no notificationEmail" } } }
+      );
     }
   } catch (error) {
     log.error({ err: error }, "Batch scrape failed");
