@@ -47,9 +47,9 @@ export async function sendBatchCompletionEmail({
     .find({
       userId: job.userId,
       status: "completed",
-      createdAt: { $gte: job.createdAt },
+      updatedAt: { $gte: job.createdAt },
     })
-    .sort({ createdAt: -1 })
+    .sort({ updatedAt: -1 })
     .limit(
       (job.input.papersPerCategory || 5) *
         (job.input.categories?.length || 1)
