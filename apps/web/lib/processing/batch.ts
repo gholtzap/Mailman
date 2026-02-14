@@ -56,7 +56,12 @@ async function fetchArxivPapers(
   log: ReturnType<typeof createLogger>
 ): Promise<ArxivPaper[]> {
   const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "PaperReader/1.0 (research-paper-aggregator)",
+    },
+    signal: AbortSignal.timeout(30_000),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch papers from arXiv: ${response.status}`);
@@ -161,7 +166,9 @@ export async function processBatchScrape({
         fetchedPapers = await fetchArxivPapers(category, papersPerCategory, log);
         categoriesSucceeded++;
       } catch (fetchError) {
-        log.error({ err: fetchError, category }, "Failed to fetch papers for category");
+        const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        const name = fetchError instanceof Error ? fetchError.name : "Unknown";
+        log.error({ err: fetchError, category, errorName: name, errorMessage: message }, "Failed to fetch papers for category");
         continue;
       }
 
