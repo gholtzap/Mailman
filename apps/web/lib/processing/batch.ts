@@ -199,9 +199,41 @@ export async function processBatchScrape({
           arxivId: paperData.arxivId,
         });
 
-        if (existingProcessed) {
+        if (existingProcessed && existingProcessed.status !== "failed") {
           alreadyProcessedCount++;
-          log.debug({ arxivId: paperData.arxivId }, "Paper already processed by user");
+          log.debug({ arxivId: paperData.arxivId, status: existingProcessed.status }, "Paper already processed by user");
+          continue;
+        }
+
+        if (existingProcessed && existingProcessed.status === "failed") {
+          await processedPapers.updateOne(
+            { _id: existingProcessed._id },
+            { $set: { status: "pending", error: undefined, updatedAt: new Date() } }
+          );
+          log.info({ arxivId: paperData.arxivId }, "Retrying previously failed paper");
+
+          totalPapersQueued++;
+
+          try {
+            await processSinglePaper({
+              processedPaperId: existingProcessed._id!.toString(),
+              jobId,
+              arxivId: paperData.arxivId,
+              encryptedApiKey,
+              skipAI: skipAI ?? false,
+            });
+          } catch (paperError) {
+            log.error({ err: paperError, arxivId: paperData.arxivId }, "Failed to process paper on retry");
+          }
+
+          await jobs.updateOne(
+            { _id: new ObjectId(jobId) },
+            {
+              $set: { updatedAt: new Date() },
+              $inc: { "progress.completed": 1 },
+            }
+          );
+
           continue;
         }
 
