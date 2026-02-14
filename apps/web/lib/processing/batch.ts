@@ -52,7 +52,8 @@ function matchesKeywords(
 
 async function fetchArxivPapers(
   category: string,
-  maxResults: number
+  maxResults: number,
+  log: ReturnType<typeof createLogger>
 ): Promise<ArxivPaper[]> {
   const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
   const response = await fetch(url);
@@ -64,6 +65,10 @@ async function fetchArxivPapers(
   const xml = await response.text();
   const entries = xml.match(/<entry>(.*?)<\/entry>/gs);
   if (!entries) {
+    log.warn(
+      { category, responseLength: xml.length, snippet: xml.substring(0, 500) },
+      "arXiv returned 200 but no <entry> tags found"
+    );
     return [];
   }
 
@@ -144,17 +149,24 @@ export async function processBatchScrape({
 
     let totalPapersQueued = 0;
     let filteredCount = 0;
+    let alreadyProcessedCount = 0;
+    let totalFetched = 0;
+    let categoriesSucceeded = 0;
 
     for (const category of categories) {
       log.info({ category, papersPerCategory }, "Fetching papers for category");
 
       let fetchedPapers: ArxivPaper[];
       try {
-        fetchedPapers = await fetchArxivPapers(category, papersPerCategory);
+        fetchedPapers = await fetchArxivPapers(category, papersPerCategory, log);
+        categoriesSucceeded++;
       } catch (fetchError) {
         log.error({ err: fetchError, category }, "Failed to fetch papers for category");
         continue;
       }
+
+      totalFetched += fetchedPapers.length;
+      log.info({ category, fetched: fetchedPapers.length }, "Fetched papers from arXiv");
 
       for (const paperData of fetchedPapers) {
         if (!matchesKeywords(paperData, keywords, keywordMatchMode)) {
@@ -163,7 +175,7 @@ export async function processBatchScrape({
           continue;
         }
 
-        const upsertResult = await papersCollection.updateOne(
+        await papersCollection.updateOne(
           { arxivId: paperData.arxivId },
           { $setOnInsert: paperData },
           { upsert: true }
@@ -181,6 +193,7 @@ export async function processBatchScrape({
         });
 
         if (existingProcessed) {
+          alreadyProcessedCount++;
           log.debug({ arxivId: paperData.arxivId }, "Paper already processed by user");
           continue;
         }
@@ -218,7 +231,8 @@ export async function processBatchScrape({
       }
     }
 
-    const finalStatus = totalPapersQueued > 0 ? "completed" : "failed";
+    const allCategoriesFailed = categories.length > 0 && categoriesSucceeded === 0;
+    const finalStatus = allCategoriesFailed ? "failed" : "completed";
 
     await jobs.updateOne(
       { _id: new ObjectId(jobId) },
@@ -232,11 +246,19 @@ export async function processBatchScrape({
     );
 
     log.info(
-      { totalPapersQueued, filteredCount },
+      {
+        finalStatus,
+        totalFetched,
+        totalPapersQueued,
+        alreadyProcessedCount,
+        filteredCount,
+        categoriesSucceeded,
+        categoriesFailed: categories.length - categoriesSucceeded,
+      },
       "Batch scrape completed"
     );
 
-    if (finalStatus === "completed" && notificationEmail) {
+    if (notificationEmail) {
       try {
         await sendBatchCompletionEmail({
           jobId,
