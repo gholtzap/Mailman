@@ -1,36 +1,25 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse, after } from "next/server";
 import { ObjectId } from "mongodb";
-import { getUsersCollection, getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
+import { getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { getClient } from "@/lib/db/mongodb";
 import { createLogger } from "@/lib/logging";
 import { processSinglePaper } from "@/lib/processing/single";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  const log = createLogger({ route: "single-processing", userId: userId || "anonymous" });
+  const authResult = await getAuthenticatedUser();
+  if (authResult.error) return authResult.error;
+  const { user } = authResult;
+  const log = createLogger({ route: "single-processing", userId: user.clerkId });
 
   try {
     log.info("Starting single paper processing request");
 
-    if (!userId) {
-      log.warn("Unauthorized request - no userId");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { paperId, skipAI: skipAIParam } = body;
     log.debug({ paperId, skipAI: skipAIParam }, "Processing paper");
-
-    const users = await getUsersCollection();
-    const user = await users.findOne({ clerkId: userId });
-
-    if (!user) {
-      log.warn("User not found in database");
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     if (!user.apiKey) {
       log.info("User has no API key - will process without AI summarization");

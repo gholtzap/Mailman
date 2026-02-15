@@ -1,10 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse, after } from "next/server";
 import { ObjectId } from "mongodb";
-import { getUsersCollection, getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
+import { getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
 import { processSinglePaper } from "@/lib/processing/single";
 import { processBatchScrape } from "@/lib/processing/batch";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 
 export const maxDuration = 300;
 
@@ -16,21 +16,12 @@ export async function POST(
   request: Request,
   { params }: RouteParams
 ) {
-  const { userId } = await auth();
-  const log = createLogger({ route: "retry-job", userId: userId || "anonymous" });
+  const authResult = await getAuthenticatedUser();
+  if (authResult.error) return authResult.error;
+  const { user } = authResult;
+  const log = createLogger({ route: "retry-job", userId: user.clerkId });
 
   try {
-    if (!userId) {
-      log.warn("Unauthorized request");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const users = await getUsersCollection();
-    const user = await users.findOne({ clerkId: userId });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     const { id } = await params;
     const jobs = await getProcessingJobsCollection();

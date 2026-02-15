@@ -1,20 +1,12 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { getUsersCollection, getRecurringSchedulesCollection } from "@/lib/db/collections";
+import { getRecurringSchedulesCollection } from "@/lib/db/collections";
 import { validateScheduleFields } from "@/lib/scheduling/validation";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 
 export async function GET(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const users = await getUsersCollection();
-  const user = await users.findOne({ clerkId: userId });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
+  const result = await getAuthenticatedUser();
+  if (result.error) return result.error;
+  const { user } = result;
 
   const { searchParams } = new URL(request.url);
   const limit = parseInt(searchParams.get("limit") || "50");
@@ -36,10 +28,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const result = await getAuthenticatedUser();
+    if (result.error) return result.error;
+    const { user } = result;
 
     const body = await request.json();
     const {
@@ -97,13 +88,6 @@ export async function POST(request: Request) {
         { error: "keywordMatchMode must be 'any' or 'all'" },
         { status: 400 }
       );
-    }
-
-    const users = await getUsersCollection();
-    const user = await users.findOne({ clerkId: userId });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const schedules = await getRecurringSchedulesCollection();

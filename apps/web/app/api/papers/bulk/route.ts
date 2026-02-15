@@ -1,25 +1,17 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse, after } from "next/server";
 import { ObjectId } from "mongodb";
-import { getUsersCollection, getProcessedPapersCollection, getPapersCollection, getFoldersCollection } from "@/lib/db/collections";
+import { getProcessedPapersCollection, getPapersCollection, getFoldersCollection } from "@/lib/db/collections";
 import { processSinglePaper } from "@/lib/processing/single";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 
 export const maxDuration = 300;
 
 const MAX_BULK_RETRY = 20;
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const users = await getUsersCollection();
-  const user = await users.findOne({ clerkId: userId });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
+  const result = await getAuthenticatedUser();
+  if (result.error) return result.error;
+  const { user } = result;
 
   const body = await request.json();
   const { action, paperIds, folderId } = body;

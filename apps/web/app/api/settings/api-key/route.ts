@@ -1,17 +1,14 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
 import { encryptApiKey, validateAnthropicApiKey } from "@/lib/encryption";
 import { createLogger } from "@/lib/logging";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  const log = createLogger({ route: "settings-api-key", userId: userId || "anonymous" });
-
-  if (!userId) {
-    log.warn("Unauthorized request");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await getAuthenticatedUser();
+  if (authResult.error) return authResult.error;
+  const { user } = authResult;
+  const log = createLogger({ route: "settings-api-key", userId: user.clerkId });
 
   const body = await request.json();
   const { apiKey } = body;
@@ -38,7 +35,7 @@ export async function POST(request: Request) {
 
   const users = await getUsersCollection();
   await users.updateOne(
-    { clerkId: userId },
+    { _id: user._id },
     {
       $set: {
         apiKey: {
@@ -56,17 +53,14 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  const { userId } = await auth();
-  const log = createLogger({ route: "settings-api-key-delete", userId: userId || "anonymous" });
-
-  if (!userId) {
-    log.warn("Unauthorized request");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await getAuthenticatedUser();
+  if (authResult.error) return authResult.error;
+  const { user } = authResult;
+  const log = createLogger({ route: "settings-api-key-delete", userId: user.clerkId });
 
   const users = await getUsersCollection();
   await users.updateOne(
-    { clerkId: userId },
+    { _id: user._id },
     {
       $unset: { apiKey: "" },
       $set: { updatedAt: new Date() },

@@ -1,25 +1,17 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { getUsersCollection, getRecurringSchedulesCollection } from "@/lib/db/collections";
+import { getRecurringSchedulesCollection } from "@/lib/db/collections";
 import { validateScheduleFields } from "@/lib/scheduling/validation";
 import { computeNextRunAt } from "@/lib/scheduling/next-run";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const users = await getUsersCollection();
-  const user = await users.findOne({ clerkId: userId });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
+  const result = await getAuthenticatedUser();
+  if (result.error) return result.error;
+  const { user } = result;
 
   const { id } = await params;
   if (!ObjectId.isValid(id)) {
@@ -44,17 +36,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const users = await getUsersCollection();
-    const user = await users.findOne({ clerkId: userId });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const authResult = await getAuthenticatedUser();
+    if (authResult.error) return authResult.error;
+    const { user } = authResult;
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
@@ -193,17 +177,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const users = await getUsersCollection();
-    const user = await users.findOne({ clerkId: userId });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const authResult = await getAuthenticatedUser();
+    if (authResult.error) return authResult.error;
+    const { user } = authResult;
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {

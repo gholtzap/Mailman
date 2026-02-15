@@ -1,25 +1,18 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { getUsersCollection, getFoldersCollection, getProcessedPapersCollection } from "@/lib/db/collections";
+import { getFoldersCollection, getProcessedPapersCollection } from "@/lib/db/collections";
 import { FOLDER_COLORS } from "@/lib/constants/folder-colors";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const result = await getAuthenticatedUser();
+  if (result.error) return result.error;
+  const { user } = result;
 
   const { id } = await params;
-
-  const users = await getUsersCollection();
-  const user = await users.findOne({ clerkId: userId });
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
 
   const folders = await getFoldersCollection();
   const folder = await folders.findOne({ _id: new ObjectId(id), userId: user._id });
@@ -34,18 +27,11 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authResult = await getAuthenticatedUser();
+  if (authResult.error) return authResult.error;
+  const { user } = authResult;
 
   const { id } = await params;
-
-  const users = await getUsersCollection();
-  const user = await users.findOne({ clerkId: userId });
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
 
   const body = await request.json();
   const { name, color } = body;
@@ -84,18 +70,11 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const result = await getAuthenticatedUser();
+  if (result.error) return result.error;
+  const { user } = result;
 
   const { id } = await params;
-
-  const users = await getUsersCollection();
-  const user = await users.findOne({ clerkId: userId });
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
 
   const folders = await getFoldersCollection();
   const folder = await folders.findOne({ _id: new ObjectId(id), userId: user._id });
