@@ -3,6 +3,7 @@ import { getRecurringSchedulesCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { scheduleCreateSchema, validateScheduleTiming } from "@/lib/validation/schemas/schedules";
+import { apiError } from "@/lib/api/errors";
 
 export async function GET(request: Request) {
   const result = await getAuthenticatedUser();
@@ -53,10 +54,7 @@ export async function POST(request: Request) {
     const effectiveIntervalDays = effectiveScheduleType === "weekly" ? 7 : intervalDays;
 
     if (effectiveScheduleType === "interval" && !effectiveIntervalDays) {
-      return NextResponse.json(
-        { error: "Missing required fields: name, categories, papersPerCategory, intervalDays" },
-        { status: 400 }
-      );
+      return apiError("Missing required fields: name, categories, papersPerCategory, intervalDays", 400);
     }
 
     const validationError = validateScheduleTiming({
@@ -68,7 +66,7 @@ export async function POST(request: Request) {
     });
 
     if (validationError) {
-      return NextResponse.json({ error: validationError }, { status: 400 });
+      return apiError(validationError, 400);
     }
 
     const schedules = await getRecurringSchedulesCollection();
@@ -113,15 +111,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, schedule: createdSchedule });
   } catch (error: any) {
     if (error.code === 11000) {
-      return NextResponse.json(
-        { error: "A schedule with this name already exists" },
-        { status: 400 }
-      );
+      return apiError("A schedule with this name already exists", 400);
     }
     console.error('[Schedules API] ERROR:', error);
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));
   }
 }

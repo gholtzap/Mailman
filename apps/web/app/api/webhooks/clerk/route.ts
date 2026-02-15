@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
+import { apiError } from "@/lib/api/errors";
 
 export async function POST(req: Request) {
   const log = createLogger({ route: "clerk-webhook" });
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
 
   if (!svix_id || !svix_timestamp || !svix_signature) {
     log.warn("Missing Svix headers");
-    return NextResponse.json({ error: "Missing headers" }, { status: 400 });
+    return apiError("Missing headers", 400);
   }
 
   const payload = await req.json();
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
     }) as any;
   } catch (err) {
     log.error({ err }, "Webhook signature verification failed");
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    return apiError("Invalid signature", 400);
   }
 
   const eventType = evt.type;

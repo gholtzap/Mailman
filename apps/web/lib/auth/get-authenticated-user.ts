@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
 import { WithId } from "mongodb";
 import { User } from "@/lib/types";
+import { apiError } from "@/lib/api/errors";
 
 type AuthResult =
   | { user: WithId<User>; error?: never }
@@ -11,17 +12,13 @@ type AuthResult =
 export async function getAuthenticatedUser(): Promise<AuthResult> {
   const { userId } = await auth();
   if (!userId) {
-    return {
-      error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
+    return { error: apiError("Unauthorized", 401) };
   }
 
   const users = await getUsersCollection();
   const user = await users.findOne({ clerkId: userId });
   if (!user) {
-    return {
-      error: NextResponse.json({ error: "User not found" }, { status: 404 }),
-    };
+    return { error: apiError("User not found", 404) };
   }
 
   return { user };

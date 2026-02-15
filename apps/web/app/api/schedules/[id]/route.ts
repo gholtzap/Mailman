@@ -5,6 +5,7 @@ import { computeNextRunAt } from "@/lib/scheduling/next-run";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { scheduleUpdateSchema, validateScheduleTiming } from "@/lib/validation/schemas/schedules";
+import { apiError } from "@/lib/api/errors";
 
 export async function GET(
   request: Request,
@@ -16,7 +17,7 @@ export async function GET(
 
   const { id } = await params;
   if (!ObjectId.isValid(id)) {
-    return NextResponse.json({ error: "Invalid schedule ID" }, { status: 400 });
+    return apiError("Invalid schedule ID", 400);
   }
 
   const schedules = await getRecurringSchedulesCollection();
@@ -26,7 +27,7 @@ export async function GET(
   });
 
   if (!schedule) {
-    return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+    return apiError("Schedule not found", 404);
   }
 
   return NextResponse.json({ schedule });
@@ -43,7 +44,7 @@ export async function PUT(
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid schedule ID" }, { status: 400 });
+      return apiError("Invalid schedule ID", 400);
     }
 
     const parsed = await parseRequestBody(request, scheduleUpdateSchema);
@@ -84,7 +85,7 @@ export async function PUT(
       });
 
       if (!existing) {
-        return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+        return apiError("Schedule not found", 404);
       }
 
       const effectiveScheduleType = scheduleType ?? existing.scheduleType ?? "interval";
@@ -105,7 +106,7 @@ export async function PUT(
       });
 
       if (validationError) {
-        return NextResponse.json({ error: validationError }, { status: 400 });
+        return apiError(validationError, 400);
       }
 
       if (intervalDays !== undefined || scheduleType !== undefined) {
@@ -143,22 +144,16 @@ export async function PUT(
     );
 
     if (!result) {
-      return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+      return apiError("Schedule not found", 404);
     }
 
     return NextResponse.json({ success: true, schedule: result });
   } catch (error: any) {
     if (error.code === 11000) {
-      return NextResponse.json(
-        { error: "A schedule with this name already exists" },
-        { status: 400 }
-      );
+      return apiError("A schedule with this name already exists", 400);
     }
     console.error('[Schedule Update API] ERROR:', error);
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -173,7 +168,7 @@ export async function DELETE(
 
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid schedule ID" }, { status: 400 });
+      return apiError("Invalid schedule ID", 400);
     }
 
     const schedules = await getRecurringSchedulesCollection();
@@ -183,15 +178,12 @@ export async function DELETE(
     });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+      return apiError("Schedule not found", 404);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[Schedule Delete API] ERROR:', error);
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));
   }
 }

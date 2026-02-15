@@ -4,6 +4,7 @@ import { getPapersCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { papersFetchSchema } from "@/lib/validation/schemas/papers";
+import { apiError } from "@/lib/api/errors";
 
 function extractArxivId(url: string): string | null {
   const patterns = [
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
 
     if (!userId) {
       log.warn("Unauthorized request");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const parsed = await parseRequestBody(request, papersFetchSchema);
@@ -84,10 +85,7 @@ export async function POST(request: Request) {
     const arxivId = extractArxivId(arxivUrl);
     if (!arxivId) {
       log.warn({ arxivUrl }, "Invalid arXiv URL");
-      return NextResponse.json(
-        { error: "Invalid arXiv URL" },
-        { status: 400 }
-      );
+      return apiError("Invalid arXiv URL", 400);
     }
 
     log.debug({ arxivId }, "Extracted arXiv ID");
@@ -118,9 +116,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ paper: finalPaper });
   } catch (error) {
     log.error({ err: error }, "Failed to fetch paper");
-    return NextResponse.json({
-      error: "Failed to fetch paper",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    return apiError("Failed to fetch paper", 500, error instanceof Error ? error.message : String(error));
   }
 }

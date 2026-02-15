@@ -4,6 +4,7 @@ import { getFoldersCollection, getProcessedPapersCollection } from "@/lib/db/col
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { folderUpdateSchema } from "@/lib/validation/schemas/folders";
+import { apiError } from "@/lib/api/errors";
 
 export async function GET(
   _request: Request,
@@ -18,7 +19,7 @@ export async function GET(
   const folders = await getFoldersCollection();
   const folder = await folders.findOne({ _id: new ObjectId(id), userId: user._id });
   if (!folder) {
-    return NextResponse.json({ error: "Folder not found" }, { status: 404 });
+    return apiError("Folder not found", 404);
   }
 
   return NextResponse.json({ folder });
@@ -56,7 +57,7 @@ export async function PUT(
   );
 
   if (!result) {
-    return NextResponse.json({ error: "Folder not found" }, { status: 404 });
+    return apiError("Folder not found", 404);
   }
 
   return NextResponse.json({ folder: result });
@@ -75,7 +76,7 @@ export async function DELETE(
   const folders = await getFoldersCollection();
   const folder = await folders.findOne({ _id: new ObjectId(id), userId: user._id });
   if (!folder) {
-    return NextResponse.json({ error: "Folder not found" }, { status: 404 });
+    return apiError("Folder not found", 404);
   }
 
   const processedPapers = await getProcessedPapersCollection();

@@ -4,6 +4,7 @@ import { FOLDER_COLORS, DEFAULT_FOLDER_COLOR } from "@/lib/constants/folder-colo
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { folderCreateSchema } from "@/lib/validation/schemas/folders";
+import { apiError } from "@/lib/api/errors";
 
 export async function GET() {
   const result = await getAuthenticatedUser();
@@ -55,8 +56,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ folder: created }, { status: 201 });
   } catch (error: any) {
     if (error.code === 11000) {
-      return NextResponse.json({ error: "A folder with this name already exists" }, { status: 409 });
+      return apiError("A folder with this name already exists", 409);
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return apiError("Internal server error", 500);
   }
 }

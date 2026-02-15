@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getRecurringSchedulesCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { apiError } from "@/lib/api/errors";
 
 export async function GET(
   request: Request,
@@ -13,7 +14,7 @@ export async function GET(
 
   const { id } = await params;
   if (!ObjectId.isValid(id)) {
-    return NextResponse.json({ error: "Invalid schedule ID" }, { status: 400 });
+    return apiError("Invalid schedule ID", 400);
   }
 
   const schedules = await getRecurringSchedulesCollection();
@@ -23,7 +24,7 @@ export async function GET(
   });
 
   if (!schedule) {
-    return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+    return apiError("Schedule not found", 404);
   }
 
   const url = new URL(request.url);

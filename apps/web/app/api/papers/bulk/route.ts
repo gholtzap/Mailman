@@ -5,6 +5,7 @@ import { processSinglePaper } from "@/lib/processing/single";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { papersBulkSchema } from "@/lib/validation/schemas/papers";
+import { apiError } from "@/lib/api/errors";
 
 export const maxDuration = 300;
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       const folders = await getFoldersCollection();
       const folder = await folders.findOne({ _id: new ObjectId(folderId), userId: user._id });
       if (!folder) {
-        return NextResponse.json({ error: "Folder not found" }, { status: 404 });
+        return apiError("Folder not found", 404);
       }
     }
 
@@ -94,5 +95,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ retried: papersToRetry.length });
   }
 
-  return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  return apiError("Invalid action", 400);
 }

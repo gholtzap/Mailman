@@ -4,6 +4,7 @@ import { getProcessedPapersCollection, getFoldersCollection } from "@/lib/db/col
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { paperFolderSchema } from "@/lib/validation/schemas/papers";
+import { apiError } from "@/lib/api/errors";
 
 export async function PUT(
   request: Request,
@@ -23,7 +24,7 @@ export async function PUT(
     const folders = await getFoldersCollection();
     const folder = await folders.findOne({ _id: new ObjectId(folderId), userId: user._id });
     if (!folder) {
-      return NextResponse.json({ error: "Folder not found" }, { status: 404 });
+      return apiError("Folder not found", 404);
     }
   }
 
@@ -40,7 +41,7 @@ export async function PUT(
   );
 
   if (!result) {
-    return NextResponse.json({ error: "Paper not found" }, { status: 404 });
+    return apiError("Paper not found", 404);
   }
 
   return NextResponse.json({ paper: result });

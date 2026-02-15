@@ -5,6 +5,7 @@ import { createLogger } from "@/lib/logging";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { processingBatchSchema } from "@/lib/validation/schemas/processing";
+import { apiError } from "@/lib/api/errors";
 
 export const maxDuration = 300;
 
@@ -27,10 +28,7 @@ export async function POST(request: Request) {
 
     if (!user.settings) {
       log.error("User has no settings configured");
-      return NextResponse.json(
-        { error: "User settings not found. Please contact support." },
-        { status: 400 }
-      );
+      return apiError("User settings not found. Please contact support.", 400);
     }
 
     const { categories: providedCategories, papersPerCategory, keywords, keywordMatchMode, skipAI } = parsed.data;
@@ -42,10 +40,7 @@ export async function POST(request: Request) {
 
     if (!categories || categories.length === 0) {
       log.warn("No categories available");
-      return NextResponse.json(
-        { error: "At least one category is required" },
-        { status: 400 }
-      );
+      return apiError("At least one category is required", 400);
     }
 
     const jobs = await getProcessingJobsCollection();
@@ -98,9 +93,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, jobId: job.insertedId });
   } catch (error) {
     log.error({ err: error }, "Batch processing failed");
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));
   }
 }

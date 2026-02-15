@@ -3,6 +3,7 @@ import { getRecurringSchedulesCollection, getProcessingJobsCollection, getUsersC
 import { processBatchScrape } from "@/lib/processing/batch";
 import { computeNextRunAt } from "@/lib/scheduling/next-run";
 import { createLogger } from "@/lib/logging";
+import { apiError } from "@/lib/api/errors";
 
 export const maxDuration = 300;
 
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
 
     if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) {
       log.warn("Unauthorized cron request");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     log.info("Starting scheduled processing job");
@@ -140,9 +141,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     log.error({ err: error }, "Cron job failed");
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getProcessedPapersCollection, getPapersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { apiError } from "@/lib/api/errors";
 
 export async function GET(
   request: Request,
@@ -20,7 +21,7 @@ export async function GET(
   });
 
   if (!processedPaper) {
-    return NextResponse.json({ error: "Paper not found" }, { status: 404 });
+    return apiError("Paper not found", 404);
   }
 
   const papers = await getPapersCollection();
@@ -49,7 +50,7 @@ export async function DELETE(
   });
 
   if (!result) {
-    return NextResponse.json({ error: "Paper not found" }, { status: 404 });
+    return apiError("Paper not found", 404);
   }
 
   return NextResponse.json({ success: true });

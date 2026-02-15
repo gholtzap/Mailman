@@ -5,6 +5,7 @@ import { createLogger } from "@/lib/logging";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { apiKeySchema } from "@/lib/validation/schemas/settings";
+import { apiError } from "@/lib/api/errors";
 
 export async function POST(request: Request) {
   const authResult = await getAuthenticatedUser();
@@ -20,10 +21,7 @@ export async function POST(request: Request) {
   const validation = await validateAnthropicApiKey(apiKey);
   if (!validation.valid) {
     log.warn({ error: validation.error }, "API key validation failed");
-    return NextResponse.json(
-      { error: validation.error || "API key validation failed" },
-      { status: 400 }
-    );
+    return apiError(validation.error || "API key validation failed", 400);
   }
 
   const encrypted = encryptApiKey(apiKey);

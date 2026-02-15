@@ -8,6 +8,7 @@ import { sendBatchCompletionEmail } from "@/lib/email/send-batch-completion";
 import { createLogger } from "@/lib/logging";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { batchCompletionEmailSchema } from "@/lib/validation/schemas/settings";
+import { apiError } from "@/lib/api/errors";
 
 export async function POST(request: Request) {
   const log = createLogger({ route: "email-batch-completion" });
@@ -24,15 +25,12 @@ export async function POST(request: Request) {
 
     if (!job) {
       log.warn({ jobId }, "Job not found");
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      return apiError("Job not found", 404);
     }
 
     if (job.status !== "completed") {
       log.warn({ jobId, status: job.status }, "Job not completed");
-      return NextResponse.json(
-        { error: "Job is not completed yet" },
-        { status: 400 }
-      );
+      return apiError("Job is not completed yet", 400);
     }
 
     let notificationEmail: string | undefined;
@@ -56,10 +54,7 @@ export async function POST(request: Request) {
 
     if (!notificationEmail) {
       log.warn({ scheduleId }, "No notification email configured");
-      return NextResponse.json(
-        { error: "No notification email configured for this schedule" },
-        { status: 400 }
-      );
+      return apiError("No notification email configured for this schedule", 400);
     }
 
     const result = await sendBatchCompletionEmail({
@@ -71,10 +66,7 @@ export async function POST(request: Request) {
 
     if (!result.sent) {
       log.warn({ jobId }, "No papers found for job");
-      return NextResponse.json(
-        { error: "No papers found for this job" },
-        { status: 404 }
-      );
+      return apiError("No papers found for this job", 404);
     }
 
     return NextResponse.json({
@@ -85,12 +77,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     log.error({ err: error }, "Failed to send batch completion email");
-    return NextResponse.json(
-      {
-        error: "Failed to send email",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return apiError("Failed to send email", 500, error instanceof Error ? error.message : String(error));
   }
 }

@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { settingsUpdateSchema } from "@/lib/validation/schemas/settings";
+import { apiError } from "@/lib/api/errors";
 
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   const users = await getUsersCollection();
@@ -35,7 +36,7 @@ export async function GET() {
 
     user = await users.findOne({ _id: result.insertedId });
     if (!user) {
-      return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+      return apiError("Failed to create user", 500);
     }
   }
 
@@ -55,7 +56,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   const parsed = await parseRequestBody(request, settingsUpdateSchema);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodSchema } from "zod";
+import { apiError } from "@/lib/api/errors";
 
 type ParseResult<T> =
   | { data: T; error?: never }
@@ -13,22 +14,12 @@ export async function parseRequestBody<T>(
   try {
     body = await request.json();
   } catch {
-    return {
-      error: NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      ),
-    };
+    return { error: apiError("Invalid request body", 400) };
   }
 
   const result = schema.safeParse(body);
   if (!result.success) {
-    return {
-      error: NextResponse.json(
-        { error: result.error.issues[0].message },
-        { status: 400 }
-      ),
-    };
+    return { error: apiError(result.error.issues[0].message, 400) };
   }
 
   return { data: result.data };

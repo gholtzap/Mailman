@@ -7,6 +7,7 @@ import { processSinglePaper } from "@/lib/processing/single";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { processingSingleSchema } from "@/lib/validation/schemas/processing";
+import { apiError } from "@/lib/api/errors";
 
 export const maxDuration = 300;
 
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
     if (!paper) {
       log.warn({ paperId }, "Paper not found");
-      return NextResponse.json({ error: "Paper not found" }, { status: 404 });
+      return apiError("Paper not found", 404);
     }
     log.debug({ arxivId: paper.arxivId }, "Paper found");
 
@@ -134,9 +135,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, jobId: jobId });
   } catch (error) {
     log.error({ err: error }, "Single paper processing failed");
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));
   }
 }

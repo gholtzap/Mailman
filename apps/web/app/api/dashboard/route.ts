@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getUsersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
+import { apiError } from "@/lib/api/errors";
 
 export async function GET() {
   const { userId } = await auth();
@@ -12,7 +13,7 @@ export async function GET() {
 
     if (!userId) {
       log.warn("Unauthorized request");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError("Unauthorized", 401);
     }
 
     const users = await getUsersCollection();
@@ -42,7 +43,7 @@ export async function GET() {
       user = await users.findOne({ _id: result.insertedId });
       if (!user) {
         log.error("Failed to create user after insert");
-        return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+        return apiError("Failed to create user", 500);
       }
       log.info({ dbUserId: user._id }, "User created successfully");
     }
@@ -114,12 +115,6 @@ export async function GET() {
     });
   } catch (error) {
     log.error({ err: error }, "Dashboard API error");
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500, error instanceof Error ? error.message : "Unknown error");
   }
 }

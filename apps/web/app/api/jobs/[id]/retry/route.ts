@@ -5,6 +5,7 @@ import { createLogger } from "@/lib/logging";
 import { processSinglePaper } from "@/lib/processing/single";
 import { processBatchScrape } from "@/lib/processing/batch";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { apiError } from "@/lib/api/errors";
 
 export const maxDuration = 300;
 
@@ -45,15 +46,12 @@ export async function POST(
     if (!job) {
       const existing = await jobs.findOne({ _id: new ObjectId(id) });
       if (!existing) {
-        return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        return apiError("Job not found", 404);
       }
       if (existing.userId.toString() !== user._id!.toString()) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        return apiError("Unauthorized", 403);
       }
-      return NextResponse.json(
-        { error: "Job cannot be retried in its current state" },
-        { status: 400 }
-      );
+      return apiError("Job cannot be retried in its current state", 400);
     }
 
     log.info({ jobId: id, jobType: job.type }, "Retrying job");
@@ -65,7 +63,7 @@ export async function POST(
           { _id: new ObjectId(id) },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
-        return NextResponse.json({ error: "Job is missing arxivUrl" }, { status: 400 });
+        return apiError("Job is missing arxivUrl", 400);
       }
 
       const arxivId = arxivUrl.split("/abs/")[1];
@@ -74,7 +72,7 @@ export async function POST(
           { _id: new ObjectId(id) },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
-        return NextResponse.json({ error: "Could not extract arxivId from URL" }, { status: 400 });
+        return apiError("Could not extract arxivId from URL", 400);
       }
 
       const papers = await getPapersCollection();
@@ -85,7 +83,7 @@ export async function POST(
           { _id: new ObjectId(id) },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
-        return NextResponse.json({ error: "Paper not found" }, { status: 404 });
+        return apiError("Paper not found", 404);
       }
 
       const processedPapers = await getProcessedPapersCollection();
@@ -107,10 +105,7 @@ export async function POST(
           { _id: new ObjectId(id) },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
-        return NextResponse.json(
-          { error: "Processed paper record not found or already in progress" },
-          { status: 400 }
-        );
+        return apiError("Processed paper record not found or already in progress", 400);
       }
 
       await jobs.updateOne(
@@ -138,7 +133,7 @@ export async function POST(
           { _id: new ObjectId(id) },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
-        return NextResponse.json({ error: "Job is missing required batch input" }, { status: 400 });
+        return apiError("Job is missing required batch input", 400);
       }
 
       await jobs.updateOne(
@@ -165,12 +160,6 @@ export async function POST(
     return NextResponse.json({ success: true });
   } catch (error) {
     log.error({ err: error }, "Retry job failed");
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500, error instanceof Error ? error.message : "Unknown error");
   }
 }
