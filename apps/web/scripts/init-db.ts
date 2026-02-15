@@ -38,6 +38,7 @@ async function initializeDatabase() {
     await processingJobsCollection.createIndex({ status: 1 });
     await processingJobsCollection.createIndex({ createdAt: -1 });
     await processingJobsCollection.createIndex({ userId: 1, createdAt: -1 });
+    await processingJobsCollection.createIndex({ scheduleId: 1, createdAt: -1 });
     await processingJobsCollection.createIndex(
       { createdAt: 1 },
       { expireAfterSeconds: 30 * 24 * 60 * 60 }

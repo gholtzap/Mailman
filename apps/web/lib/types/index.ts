@@ -73,6 +73,7 @@ export interface ProcessedPaper {
 export interface ProcessingJob {
   _id?: ObjectId;
   userId: ObjectId;
+  scheduleId?: ObjectId;
   type: "single_paper" | "batch_scrape";
   status: "queued" | "running" | "completed" | "failed";
   input: {
@@ -86,6 +87,14 @@ export interface ProcessingJob {
   progress: {
     total: number;
     completed: number;
+  };
+  result?: {
+    totalFetched: number;
+    totalPapersQueued: number;
+    alreadyProcessedCount: number;
+    filteredCount: number;
+    categoriesSucceeded: number;
+    categoriesFailed: number;
   };
   createdAt: Date;
   updatedAt: Date;

@@ -63,6 +63,7 @@ export async function GET(request: Request) {
 
         const job = await jobs.insertOne({
           userId: user._id!,
+          scheduleId: schedule._id,
           type: "batch_scrape",
           status: "queued",
           input: jobInput,

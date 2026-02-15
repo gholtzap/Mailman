@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { RecurringSchedule } from "@/lib/types";
+import React, { useState, useEffect } from "react";
+import { RecurringSchedule, ProcessingJob } from "@/lib/types";
 import { ARXIV_CATEGORIES } from "@/lib/arxiv-categories";
 import Modal from "@/app/components/Modal";
 
@@ -115,6 +115,10 @@ export default function SchedulesPage() {
 
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<RecurringSchedule | null>(null);
+
+  const [expandedScheduleId, setExpandedScheduleId] = useState<string | null>(null);
+  const [runs, setRuns] = useState<ProcessingJob[]>([]);
+  const [runsLoading, setRunsLoading] = useState(false);
 
   const [formScheduleType, setFormScheduleType] = useState<"interval" | "weekly">("interval");
   const [formWeekDays, setFormWeekDays] = useState<number[]>([]);
@@ -347,6 +351,44 @@ export default function SchedulesPage() {
       hour: "numeric",
       minute: "2-digit",
     });
+  };
+
+  const toggleRuns = async (scheduleId: string) => {
+    if (expandedScheduleId === scheduleId) {
+      setExpandedScheduleId(null);
+      setRuns([]);
+      return;
+    }
+    setExpandedScheduleId(scheduleId);
+    setRunsLoading(true);
+    try {
+      const res = await fetch(`/api/schedules/${scheduleId}/runs?limit=20`);
+      const data = await res.json();
+      setRuns(data.runs || []);
+    } catch {
+      setRuns([]);
+    } finally {
+      setRunsLoading(false);
+    }
+  };
+
+  const getRunResultLabel = (job: ProcessingJob) => {
+    if (job.status === "failed" && !job.result) return "Failed";
+    if (!job.result) return job.status === "running" ? "Running..." : "Pending";
+    const { totalFetched, totalPapersQueued, alreadyProcessedCount, filteredCount } = job.result;
+    if (totalPapersQueued > 0) return `${totalPapersQueued} new paper${totalPapersQueued === 1 ? "" : "s"} processed`;
+    if (alreadyProcessedCount > 0) return `No new papers (${alreadyProcessedCount} already processed)`;
+    if (filteredCount > 0) return `No papers matched keywords (${filteredCount} filtered)`;
+    if (totalFetched === 0) return "No papers found";
+    return "No new papers";
+  };
+
+  const getEmailLabel = (job: any) => {
+    if (!job.emailResult) return "--";
+    if (job.emailResult.skipped) return "Skipped";
+    if (job.emailResult.error) return "Failed";
+    if (job.emailResult.sent || job.emailResult.data) return "Sent";
+    return "--";
   };
 
   if (loading) {
@@ -771,7 +813,8 @@ export default function SchedulesPage() {
                 </thead>
                 <tbody>
                   {schedules.map((schedule) => (
-                    <tr key={schedule._id!.toString()} style={{ borderBottom: '0.5px solid var(--border-primary)' }}>
+                    <React.Fragment key={schedule._id!.toString()}>
+                    <tr style={{ borderBottom: '0.5px solid var(--border-primary)' }}>
                       <td style={{ padding: '12px 8px', color: 'var(--text-primary)' }}>{schedule.name}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontFamily: 'var(--font-geist-mono)', fontSize: '12px' }}>
                         {schedule.categories.join(", ")}
@@ -800,8 +843,23 @@ export default function SchedulesPage() {
                           ? "Pending first run"
                           : formatDate(schedule.nextRunAt)}
                       </td>
-                      <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontFamily: 'var(--font-geist-mono)' }}>
-                        {schedule.runCount}
+                      <td style={{ padding: '12px 8px' }}>
+                        <button
+                          onClick={() => toggleRuns(schedule._id!.toString())}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--accent)',
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-geist-mono)',
+                            fontSize: '13px',
+                            padding: 0,
+                            textDecoration: 'underline',
+                            textUnderlineOffset: '2px',
+                          }}
+                        >
+                          {schedule.runCount}
+                        </button>
                       </td>
                       <td style={{ padding: '12px 8px' }}>
                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -874,6 +932,47 @@ export default function SchedulesPage() {
                         </div>
                       </td>
                     </tr>
+                    {expandedScheduleId === schedule._id!.toString() && (
+                      <tr>
+                        <td colSpan={9} style={{ padding: '0 8px 12px 8px', background: 'var(--bg-primary)' }}>
+                          {runsLoading ? (
+                            <div style={{ padding: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              Loading run history...
+                            </div>
+                          ) : runs.length === 0 ? (
+                            <div style={{ padding: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              No runs yet
+                            </div>
+                          ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginTop: '4px' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '0.5px solid var(--border-primary)' }}>
+                                  <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Date</th>
+                                  <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Result</th>
+                                  <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Email</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {runs.map((run) => (
+                                  <tr key={run._id!.toString()} style={{ borderBottom: '0.5px solid var(--border-primary)' }}>
+                                    <td style={{ padding: '6px 8px', color: 'var(--text-secondary)', fontFamily: 'var(--font-geist-mono)', whiteSpace: 'nowrap' }}>
+                                      {formatDate(run.createdAt)}
+                                    </td>
+                                    <td style={{ padding: '6px 8px', color: run.status === 'failed' ? 'rgb(239, 68, 68)' : 'var(--text-primary)' }}>
+                                      {getRunResultLabel(run)}
+                                    </td>
+                                    <td style={{ padding: '6px 8px', color: 'var(--text-secondary)' }}>
+                                      {getEmailLabel(run)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>

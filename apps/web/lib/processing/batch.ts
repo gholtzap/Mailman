@@ -279,6 +279,14 @@ export async function processBatchScrape({
         $set: {
           status: finalStatus,
           "progress.total": totalPapersQueued,
+          result: {
+            totalFetched,
+            totalPapersQueued,
+            alreadyProcessedCount,
+            filteredCount,
+            categoriesSucceeded,
+            categoriesFailed: categories.length - categoriesSucceeded,
+          },
           updatedAt: new Date(),
         },
       }

@@ -177,6 +177,7 @@ describe('/api/cron/process-schedules', () => {
       const job = await db.collection('processing_jobs').findOne({ userId: user._id, type: 'batch_scrape' })
       expect(job).toBeDefined()
       expect(job?.status).toBe('queued')
+      expect(job?.scheduleId).toEqual(schedule._id)
     })
 
     it('should process schedule with keywords', async () => {
