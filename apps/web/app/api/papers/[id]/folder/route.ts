@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getProcessedPapersCollection, getFoldersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { paperFolderSchema } from "@/lib/validation/schemas/papers";
 
 export async function PUT(
   request: Request,
@@ -13,8 +15,9 @@ export async function PUT(
 
   const { id } = await params;
 
-  const body = await request.json();
-  const { folderId } = body;
+  const parsed = await parseRequestBody(request, paperFolderSchema);
+  if (parsed.error) return parsed.error;
+  const { folderId } = parsed.data;
 
   if (folderId !== null && folderId !== undefined) {
     const folders = await getFoldersCollection();

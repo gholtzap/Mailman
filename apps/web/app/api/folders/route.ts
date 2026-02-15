@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getFoldersCollection } from "@/lib/db/collections";
 import { FOLDER_COLORS, DEFAULT_FOLDER_COLOR } from "@/lib/constants/folder-colors";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { folderCreateSchema } from "@/lib/validation/schemas/folders";
 
 export async function GET() {
   const result = await getAuthenticatedUser();
@@ -24,12 +26,9 @@ export async function POST(request: Request) {
     if (authResult.error) return authResult.error;
     const { user } = authResult;
 
-    const body = await request.json();
-    const { name, color } = body;
-
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-      return NextResponse.json({ error: "Folder name is required" }, { status: 400 });
-    }
+    const parsed = await parseRequestBody(request, folderCreateSchema);
+    if (parsed.error) return parsed.error;
+    const { name, color } = parsed.data;
 
     const resolvedColor = color && FOLDER_COLORS.includes(color) ? color : DEFAULT_FOLDER_COLOR;
 

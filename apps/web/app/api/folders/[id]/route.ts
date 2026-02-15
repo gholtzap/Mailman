@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getFoldersCollection, getProcessedPapersCollection } from "@/lib/db/collections";
-import { FOLDER_COLORS } from "@/lib/constants/folder-colors";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { folderUpdateSchema } from "@/lib/validation/schemas/folders";
 
 export async function GET(
   _request: Request,
@@ -33,22 +34,17 @@ export async function PUT(
 
   const { id } = await params;
 
-  const body = await request.json();
-  const { name, color } = body;
+  const parsed = await parseRequestBody(request, folderUpdateSchema);
+  if (parsed.error) return parsed.error;
+  const { name, color } = parsed.data;
 
   const updates: Record<string, any> = { updatedAt: new Date() };
 
   if (name !== undefined) {
-    if (typeof name !== "string" || name.trim().length === 0) {
-      return NextResponse.json({ error: "Folder name cannot be empty" }, { status: 400 });
-    }
     updates.name = name.trim();
   }
 
   if (color !== undefined) {
-    if (!FOLDER_COLORS.includes(color)) {
-      return NextResponse.json({ error: "Invalid color" }, { status: 400 });
-    }
     updates.color = color;
   }
 

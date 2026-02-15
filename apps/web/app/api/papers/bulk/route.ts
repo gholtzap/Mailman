@@ -3,6 +3,8 @@ import { ObjectId } from "mongodb";
 import { getProcessedPapersCollection, getPapersCollection, getFoldersCollection } from "@/lib/db/collections";
 import { processSinglePaper } from "@/lib/processing/single";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { papersBulkSchema } from "@/lib/validation/schemas/papers";
 
 export const maxDuration = 300;
 
@@ -13,12 +15,9 @@ export async function POST(request: Request) {
   if (result.error) return result.error;
   const { user } = result;
 
-  const body = await request.json();
-  const { action, paperIds, folderId } = body;
-
-  if (!action || !Array.isArray(paperIds) || paperIds.length === 0) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
+  const parsed = await parseRequestBody(request, papersBulkSchema);
+  if (parsed.error) return parsed.error;
+  const { action, paperIds, folderId } = parsed.data;
 
   const processedPapers = await getProcessedPapersCollection();
   const objectIds = paperIds.map((id: string) => new ObjectId(id));

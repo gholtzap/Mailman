@@ -6,23 +6,18 @@ import {
 } from "@/lib/db/collections";
 import { sendBatchCompletionEmail } from "@/lib/email/send-batch-completion";
 import { createLogger } from "@/lib/logging";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { batchCompletionEmailSchema } from "@/lib/validation/schemas/settings";
 
 export async function POST(request: Request) {
   const log = createLogger({ route: "email-batch-completion" });
 
   try {
-    const body = await request.json();
-    const { jobId, scheduleId } = body;
+    const parsed = await parseRequestBody(request, batchCompletionEmailSchema);
+    if (parsed.error) return parsed.error;
+    const { jobId, scheduleId } = parsed.data;
 
     log.info({ jobId, scheduleId }, "Processing batch completion email");
-
-    if (!jobId) {
-      log.warn("Missing jobId");
-      return NextResponse.json(
-        { error: "jobId is required" },
-        { status: 400 }
-      );
-    }
 
     const jobs = await getProcessingJobsCollection();
     const job = await jobs.findOne({ _id: new ObjectId(jobId) });

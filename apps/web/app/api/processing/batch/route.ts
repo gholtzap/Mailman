@@ -3,6 +3,8 @@ import { getProcessingJobsCollection } from "@/lib/db/collections";
 import { processBatchScrape } from "@/lib/processing/batch";
 import { createLogger } from "@/lib/logging";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { processingBatchSchema } from "@/lib/validation/schemas/processing";
 
 export const maxDuration = 300;
 
@@ -15,8 +17,9 @@ export async function POST(request: Request) {
   try {
     log.info("Starting batch processing request");
 
-    const body = await request.json();
-    log.debug({ body }, "Received request body");
+    const parsed = await parseRequestBody(request, processingBatchSchema);
+    if (parsed.error) return parsed.error;
+    log.debug({ body: parsed.data }, "Received request body");
 
     if (!user.apiKey) {
       log.info("User has no API key - will process without AI summarization");
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { categories: providedCategories, papersPerCategory, keywords, keywordMatchMode, skipAI } = body;
+    const { categories: providedCategories, papersPerCategory, keywords, keywordMatchMode, skipAI } = parsed.data;
     const categories = providedCategories && providedCategories.length > 0
       ? providedCategories
       : user.settings.defaultCategories;
@@ -41,14 +44,6 @@ export async function POST(request: Request) {
       log.warn("No categories available");
       return NextResponse.json(
         { error: "At least one category is required" },
-        { status: 400 }
-      );
-    }
-
-    if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
-      log.warn({ keywordMatchMode }, "Invalid keywordMatchMode");
-      return NextResponse.json(
-        { error: "keywordMatchMode must be 'any' or 'all'" },
         { status: 400 }
       );
     }

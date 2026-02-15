@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getRecurringSchedulesCollection } from "@/lib/db/collections";
-import { validateScheduleFields } from "@/lib/scheduling/validation";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { scheduleCreateSchema, validateScheduleTiming } from "@/lib/validation/schemas/schedules";
 
 export async function GET(request: Request) {
   const result = await getAuthenticatedUser();
@@ -32,7 +33,8 @@ export async function POST(request: Request) {
     if (result.error) return result.error;
     const { user } = result;
 
-    const body = await request.json();
+    const parsed = await parseRequestBody(request, scheduleCreateSchema);
+    if (parsed.error) return parsed.error;
     const {
       name,
       categories,
@@ -45,17 +47,10 @@ export async function POST(request: Request) {
       weekDays,
       preferredHour,
       timezone,
-    } = body;
+    } = parsed.data;
 
     const effectiveScheduleType = scheduleType ?? "interval";
     const effectiveIntervalDays = effectiveScheduleType === "weekly" ? 7 : intervalDays;
-
-    if (!name || !categories || categories.length === 0 || !papersPerCategory) {
-      return NextResponse.json(
-        { error: "Missing required fields: name, categories, papersPerCategory" },
-        { status: 400 }
-      );
-    }
 
     if (effectiveScheduleType === "interval" && !effectiveIntervalDays) {
       return NextResponse.json(
@@ -64,14 +59,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 }
-      );
-    }
-
-    const validationError = validateScheduleFields({
+    const validationError = validateScheduleTiming({
       scheduleType: effectiveScheduleType,
       intervalDays: effectiveIntervalDays,
       weekDays,
@@ -81,13 +69,6 @@ export async function POST(request: Request) {
 
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 });
-    }
-
-    if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
-      return NextResponse.json(
-        { error: "keywordMatchMode must be 'any' or 'all'" },
-        { status: 400 }
-      );
     }
 
     const schedules = await getRecurringSchedulesCollection();

@@ -1,6 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { settingsUpdateSchema } from "@/lib/validation/schemas/settings";
 
 export async function GET() {
   const { userId } = await auth();
@@ -56,29 +58,9 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { defaultCategories, maxPagesPerPaper, papersPerCategory, keywords, keywordMatchMode, email } = body;
-
-  if (keywordMatchMode && !["any", "all"].includes(keywordMatchMode)) {
-    return NextResponse.json(
-      { error: "keywordMatchMode must be 'any' or 'all'" },
-      { status: 400 }
-    );
-  }
-
-  if (email !== undefined && typeof email !== "string") {
-    return NextResponse.json(
-      { error: "Invalid email address" },
-      { status: 400 }
-    );
-  }
-
-  if (email !== undefined && email !== "" && !email.includes("@")) {
-    return NextResponse.json(
-      { error: "Invalid email address" },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseRequestBody(request, settingsUpdateSchema);
+  if (parsed.error) return parsed.error;
+  const { defaultCategories, maxPagesPerPaper, papersPerCategory, keywords, keywordMatchMode, email } = parsed.data;
 
   const users = await getUsersCollection();
   const updateFields: any = {

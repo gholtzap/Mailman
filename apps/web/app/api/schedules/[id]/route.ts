@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getRecurringSchedulesCollection } from "@/lib/db/collections";
-import { validateScheduleFields } from "@/lib/scheduling/validation";
 import { computeNextRunAt } from "@/lib/scheduling/next-run";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { scheduleUpdateSchema, validateScheduleTiming } from "@/lib/validation/schemas/schedules";
 
 export async function GET(
   request: Request,
@@ -45,7 +46,8 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid schedule ID" }, { status: 400 });
     }
 
-    const body = await request.json();
+    const parsed = await parseRequestBody(request, scheduleUpdateSchema);
+    if (parsed.error) return parsed.error;
     const {
       name,
       categories,
@@ -57,7 +59,7 @@ export async function PUT(
       weekDays,
       preferredHour,
       timezone,
-    } = body;
+    } = parsed.data;
 
     const updateFields: any = {
       updatedAt: new Date(),
@@ -94,7 +96,7 @@ export async function PUT(
       const effectivePreferredHour = preferredHour ?? existing.preferredHour ?? 6;
       const effectiveTimezone = timezone ?? existing.timezone ?? "UTC";
 
-      const validationError = validateScheduleFields({
+      const validationError = validateScheduleTiming({
         scheduleType: effectiveScheduleType,
         intervalDays: effectiveIntervalDays,
         weekDays: effectiveWeekDays,
@@ -127,21 +129,9 @@ export async function PUT(
     }
 
     if (status !== undefined) {
-      if (!["active", "paused"].includes(status)) {
-        return NextResponse.json(
-          { error: "status must be either 'active' or 'paused'" },
-          { status: 400 }
-        );
-      }
       updateFields.status = status;
     }
     if (email !== undefined) {
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return NextResponse.json(
-          { error: "Invalid email format" },
-          { status: 400 }
-        );
-      }
       updateFields.email = email || null;
     }
 

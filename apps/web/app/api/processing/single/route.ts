@@ -5,6 +5,8 @@ import { getClient } from "@/lib/db/mongodb";
 import { createLogger } from "@/lib/logging";
 import { processSinglePaper } from "@/lib/processing/single";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { processingSingleSchema } from "@/lib/validation/schemas/processing";
 
 export const maxDuration = 300;
 
@@ -17,8 +19,9 @@ export async function POST(request: Request) {
   try {
     log.info("Starting single paper processing request");
 
-    const body = await request.json();
-    const { paperId, skipAI: skipAIParam } = body;
+    const parsed = await parseRequestBody(request, processingSingleSchema);
+    if (parsed.error) return parsed.error;
+    const { paperId, skipAI: skipAIParam } = parsed.data;
     log.debug({ paperId, skipAI: skipAIParam }, "Processing paper");
 
     if (!user.apiKey) {

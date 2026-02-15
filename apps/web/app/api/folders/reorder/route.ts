@@ -2,18 +2,17 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getFoldersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { folderReorderSchema } from "@/lib/validation/schemas/folders";
 
 export async function PUT(request: Request) {
   const result = await getAuthenticatedUser();
   if (result.error) return result.error;
   const { user } = result;
 
-  const body = await request.json();
-  const { order } = body;
-
-  if (!Array.isArray(order) || !order.every((id: any) => typeof id === "string")) {
-    return NextResponse.json({ error: "order must be an array of folder ID strings" }, { status: 400 });
-  }
+  const parsed = await parseRequestBody(request, folderReorderSchema);
+  if (parsed.error) return parsed.error;
+  const { order } = parsed.data;
 
   const folders = await getFoldersCollection();
 

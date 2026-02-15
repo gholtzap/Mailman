@@ -2,6 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getPapersCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { papersFetchSchema } from "@/lib/validation/schemas/papers";
 
 function extractArxivId(url: string): string | null {
   const patterns = [
@@ -75,8 +77,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { arxivUrl } = body;
+    const parsed = await parseRequestBody(request, papersFetchSchema);
+    if (parsed.error) return parsed.error;
+    const { arxivUrl } = parsed.data;
 
     const arxivId = extractArxivId(arxivUrl);
     if (!arxivId) {

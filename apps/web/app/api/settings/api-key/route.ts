@@ -3,6 +3,8 @@ import { getUsersCollection } from "@/lib/db/collections";
 import { encryptApiKey, validateAnthropicApiKey } from "@/lib/encryption";
 import { createLogger } from "@/lib/logging";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRequestBody } from "@/lib/validation/parse-request";
+import { apiKeySchema } from "@/lib/validation/schemas/settings";
 
 export async function POST(request: Request) {
   const authResult = await getAuthenticatedUser();
@@ -10,16 +12,9 @@ export async function POST(request: Request) {
   const { user } = authResult;
   const log = createLogger({ route: "settings-api-key", userId: user.clerkId });
 
-  const body = await request.json();
-  const { apiKey } = body;
-
-  if (!apiKey || !apiKey.startsWith("sk-ant-")) {
-    log.warn("Invalid API key format");
-    return NextResponse.json(
-      { error: "Invalid API key format" },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseRequestBody(request, apiKeySchema);
+  if (parsed.error) return parsed.error;
+  const { apiKey } = parsed.data;
 
   log.info("Validating API key with Anthropic");
   const validation = await validateAnthropicApiKey(apiKey);
