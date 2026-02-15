@@ -396,7 +396,7 @@ describe('/api/schedules', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('Invalid schedule ID')
+      expect(data.error).toBe('Invalid ID')
     })
 
     it('should return 404 if schedule not found', async () => {

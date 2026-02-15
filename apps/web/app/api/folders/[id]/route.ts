@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
 import { getFoldersCollection, getProcessedPapersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
+import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { folderUpdateSchema } from "@/lib/validation/schemas/folders";
 import { apiError } from "@/lib/api/errors";
 
@@ -14,10 +14,11 @@ export async function GET(
   if (result.error) return result.error;
   const { user } = result;
 
-  const { id } = await params;
+  const parsed = await parseRouteParams(params);
+  if (parsed.error) return parsed.error;
 
   const folders = await getFoldersCollection();
-  const folder = await folders.findOne({ _id: new ObjectId(id), userId: user._id });
+  const folder = await folders.findOne({ _id: parsed.id, userId: user._id });
   if (!folder) {
     return apiError("Folder not found", 404);
   }
@@ -33,7 +34,8 @@ export async function PUT(
   if (authResult.error) return authResult.error;
   const { user } = authResult;
 
-  const { id } = await params;
+  const paramsParsed = await parseRouteParams(params);
+  if (paramsParsed.error) return paramsParsed.error;
 
   const parsed = await parseRequestBody(request, folderUpdateSchema);
   if (parsed.error) return parsed.error;
@@ -51,7 +53,7 @@ export async function PUT(
 
   const folders = await getFoldersCollection();
   const result = await folders.findOneAndUpdate(
-    { _id: new ObjectId(id), userId: user._id },
+    { _id: paramsParsed.id, userId: user._id },
     { $set: updates },
     { returnDocument: "after" }
   );
@@ -71,21 +73,22 @@ export async function DELETE(
   if (result.error) return result.error;
   const { user } = result;
 
-  const { id } = await params;
+  const parsed = await parseRouteParams(params);
+  if (parsed.error) return parsed.error;
 
   const folders = await getFoldersCollection();
-  const folder = await folders.findOne({ _id: new ObjectId(id), userId: user._id });
+  const folder = await folders.findOne({ _id: parsed.id, userId: user._id });
   if (!folder) {
     return apiError("Folder not found", 404);
   }
 
   const processedPapers = await getProcessedPapersCollection();
   await processedPapers.updateMany(
-    { userId: user._id, folderId: new ObjectId(id) },
+    { userId: user._id, folderId: parsed.id },
     { $unset: { folderId: "" } }
   );
 
-  await folders.deleteOne({ _id: new ObjectId(id), userId: user._id });
+  await folders.deleteOne({ _id: parsed.id, userId: user._id });
 
   return NextResponse.json({ success: true });
 }

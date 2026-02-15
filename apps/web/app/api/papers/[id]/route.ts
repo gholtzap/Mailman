@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
 import { getProcessedPapersCollection, getPapersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { apiError } from "@/lib/api/errors";
 
 export async function GET(
@@ -12,11 +12,12 @@ export async function GET(
   if (result.error) return result.error;
   const { user } = result;
 
-  const { id } = await params;
+  const parsed = await parseRouteParams(params);
+  if (parsed.error) return parsed.error;
 
   const processedPapers = await getProcessedPapersCollection();
   const processedPaper = await processedPapers.findOne({
-    _id: new ObjectId(id),
+    _id: parsed.id,
     userId: user._id,
   });
 
@@ -41,11 +42,12 @@ export async function DELETE(
   if (authResult.error) return authResult.error;
   const { user } = authResult;
 
-  const { id } = await params;
+  const parsed = await parseRouteParams(params);
+  if (parsed.error) return parsed.error;
 
   const processedPapers = await getProcessedPapersCollection();
   const result = await processedPapers.findOneAndDelete({
-    _id: new ObjectId(id),
+    _id: parsed.id,
     userId: user._id,
   });
 

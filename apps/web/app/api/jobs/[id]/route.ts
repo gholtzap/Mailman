@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProcessingJobsCollection } from "@/lib/db/collections";
-import { ObjectId } from "mongodb";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { apiError } from "@/lib/api/errors";
 
 interface RouteParams {
@@ -16,9 +16,11 @@ export async function DELETE(
   if (result.error) return result.error;
   const { user } = result;
 
-  const { id } = await params;
+  const parsed = await parseRouteParams(params);
+  if (parsed.error) return parsed.error;
+
   const jobs = await getProcessingJobsCollection();
-  const job = await jobs.findOne({ _id: new ObjectId(id) });
+  const job = await jobs.findOne({ _id: parsed.id });
 
   if (!job) {
     return apiError("Job not found", 404);
@@ -32,7 +34,7 @@ export async function DELETE(
     return apiError("Cannot cancel a running job", 400);
   }
 
-  await jobs.deleteOne({ _id: new ObjectId(id) });
+  await jobs.deleteOne({ _id: parsed.id });
 
   return NextResponse.json({ success: true });
 }

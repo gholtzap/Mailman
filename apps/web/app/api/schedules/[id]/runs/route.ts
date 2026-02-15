@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
 import { getRecurringSchedulesCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { apiError } from "@/lib/api/errors";
 
 export async function GET(
@@ -12,14 +12,12 @@ export async function GET(
   if (result.error) return result.error;
   const { user } = result;
 
-  const { id } = await params;
-  if (!ObjectId.isValid(id)) {
-    return apiError("Invalid schedule ID", 400);
-  }
+  const parsed = await parseRouteParams(params);
+  if (parsed.error) return parsed.error;
 
   const schedules = await getRecurringSchedulesCollection();
   const schedule = await schedules.findOne({
-    _id: new ObjectId(id),
+    _id: parsed.id,
     userId: user._id,
   });
 

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
 import { getRecurringSchedulesCollection } from "@/lib/db/collections";
 import { computeNextRunAt } from "@/lib/scheduling/next-run";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
+import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { scheduleUpdateSchema, validateScheduleTiming } from "@/lib/validation/schemas/schedules";
 import { apiError } from "@/lib/api/errors";
 
@@ -15,14 +15,12 @@ export async function GET(
   if (result.error) return result.error;
   const { user } = result;
 
-  const { id } = await params;
-  if (!ObjectId.isValid(id)) {
-    return apiError("Invalid schedule ID", 400);
-  }
+  const parsed = await parseRouteParams(params);
+  if (parsed.error) return parsed.error;
 
   const schedules = await getRecurringSchedulesCollection();
   const schedule = await schedules.findOne({
-    _id: new ObjectId(id),
+    _id: parsed.id,
     userId: user._id,
   });
 
@@ -42,10 +40,8 @@ export async function PUT(
     if (authResult.error) return authResult.error;
     const { user } = authResult;
 
-    const { id } = await params;
-    if (!ObjectId.isValid(id)) {
-      return apiError("Invalid schedule ID", 400);
-    }
+    const paramsParsed = await parseRouteParams(params);
+    if (paramsParsed.error) return paramsParsed.error;
 
     const parsed = await parseRequestBody(request, scheduleUpdateSchema);
     if (parsed.error) return parsed.error;
@@ -80,7 +76,7 @@ export async function PUT(
     if (hasTimingChange) {
       const schedulesCol = await getRecurringSchedulesCollection();
       const existing = await schedulesCol.findOne({
-        _id: new ObjectId(id),
+        _id: paramsParsed.id,
         userId: user._id,
       });
 
@@ -138,7 +134,7 @@ export async function PUT(
 
     const schedules = await getRecurringSchedulesCollection();
     const result = await schedules.findOneAndUpdate(
-      { _id: new ObjectId(id), userId: user._id },
+      { _id: paramsParsed.id, userId: user._id },
       { $set: updateFields },
       { returnDocument: "after" }
     );
@@ -166,14 +162,12 @@ export async function DELETE(
     if (authResult.error) return authResult.error;
     const { user } = authResult;
 
-    const { id } = await params;
-    if (!ObjectId.isValid(id)) {
-      return apiError("Invalid schedule ID", 400);
-    }
+    const parsed = await parseRouteParams(params);
+    if (parsed.error) return parsed.error;
 
     const schedules = await getRecurringSchedulesCollection();
     const result = await schedules.deleteOne({
-      _id: new ObjectId(id),
+      _id: parsed.id,
       userId: user._id,
     });
 

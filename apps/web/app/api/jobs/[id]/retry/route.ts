@@ -1,10 +1,10 @@
 import { NextResponse, after } from "next/server";
-import { ObjectId } from "mongodb";
 import { getPapersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
 import { processSinglePaper } from "@/lib/processing/single";
 import { processBatchScrape } from "@/lib/processing/batch";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { apiError } from "@/lib/api/errors";
 
 export const maxDuration = 300;
@@ -22,14 +22,15 @@ export async function POST(
   const { user } = authResult;
   const log = createLogger({ route: "retry-job", userId: user.clerkId });
 
-  try {
+  const parsed = await parseRouteParams(params);
+  if (parsed.error) return parsed.error;
 
-    const { id } = await params;
+  try {
     const jobs = await getProcessingJobsCollection();
 
     const job = await jobs.findOneAndUpdate(
       {
-        _id: new ObjectId(id),
+        _id: parsed.id,
         userId: user._id,
         status: { $in: ["queued", "failed"] },
       },
@@ -44,7 +45,7 @@ export async function POST(
     );
 
     if (!job) {
-      const existing = await jobs.findOne({ _id: new ObjectId(id) });
+      const existing = await jobs.findOne({ _id: parsed.id });
       if (!existing) {
         return apiError("Job not found", 404);
       }
@@ -54,13 +55,13 @@ export async function POST(
       return apiError("Job cannot be retried in its current state", 400);
     }
 
-    log.info({ jobId: id, jobType: job.type }, "Retrying job");
+    log.info({ jobId: parsed.id.toString(), jobType: job.type }, "Retrying job");
 
     if (job.type === "single_paper") {
       const arxivUrl = job.input.arxivUrl;
       if (!arxivUrl) {
         await jobs.updateOne(
-          { _id: new ObjectId(id) },
+          { _id: parsed.id },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
         return apiError("Job is missing arxivUrl", 400);
@@ -69,7 +70,7 @@ export async function POST(
       const arxivId = arxivUrl.split("/abs/")[1];
       if (!arxivId) {
         await jobs.updateOne(
-          { _id: new ObjectId(id) },
+          { _id: parsed.id },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
         return apiError("Could not extract arxivId from URL", 400);
@@ -80,7 +81,7 @@ export async function POST(
 
       if (!paper) {
         await jobs.updateOne(
-          { _id: new ObjectId(id) },
+          { _id: parsed.id },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
         return apiError("Paper not found", 404);
@@ -102,48 +103,48 @@ export async function POST(
 
       if (!processedPaper) {
         await jobs.updateOne(
-          { _id: new ObjectId(id) },
+          { _id: parsed.id },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
         return apiError("Processed paper record not found or already in progress", 400);
       }
 
       await jobs.updateOne(
-        { _id: new ObjectId(id) },
+        { _id: parsed.id },
         { $set: { progress: { total: 1, completed: 0 } } }
       );
 
       after(async () => {
         await processSinglePaper({
           processedPaperId: processedPaper._id!.toString(),
-          jobId: id,
+          jobId: parsed.id.toString(),
           arxivId: paper.arxivId,
           encryptedApiKey: user.apiKey || null,
           skipAI: job.input.skipAI ?? false,
         });
       });
 
-      log.info({ jobId: id, arxivId }, "Single paper retry triggered");
+      log.info({ jobId: parsed.id.toString(), arxivId }, "Single paper retry triggered");
     } else if (job.type === "batch_scrape") {
       const categories = job.input.categories;
       const papersPerCategory = job.input.papersPerCategory;
 
       if (!categories || !papersPerCategory) {
         await jobs.updateOne(
-          { _id: new ObjectId(id) },
+          { _id: parsed.id },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
         return apiError("Job is missing required batch input", 400);
       }
 
       await jobs.updateOne(
-        { _id: new ObjectId(id) },
+        { _id: parsed.id },
         { $set: { progress: { total: categories.length * papersPerCategory, completed: 0 } } }
       );
 
       after(() =>
         processBatchScrape({
-          jobId: id,
+          jobId: parsed.id.toString(),
           userId: user._id!,
           categories,
           papersPerCategory,
@@ -154,7 +155,7 @@ export async function POST(
         })
       );
 
-      log.info({ jobId: id }, "Batch scrape retry triggered");
+      log.info({ jobId: parsed.id.toString() }, "Batch scrape retry triggered");
     }
 
     return NextResponse.json({ success: true });

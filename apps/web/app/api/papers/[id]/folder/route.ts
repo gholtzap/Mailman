@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { getProcessedPapersCollection, getFoldersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
+import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { paperFolderSchema } from "@/lib/validation/schemas/papers";
 import { apiError } from "@/lib/api/errors";
 
@@ -14,7 +15,8 @@ export async function PUT(
   if (authResult.error) return authResult.error;
   const { user } = authResult;
 
-  const { id } = await params;
+  const paramsParsed = await parseRouteParams(params);
+  if (paramsParsed.error) return paramsParsed.error;
 
   const parsed = await parseRequestBody(request, paperFolderSchema);
   if (parsed.error) return parsed.error;
@@ -35,7 +37,7 @@ export async function PUT(
     : { $unset: { folderId: "" }, $set: { updatedAt: new Date() } };
 
   const result = await processedPapers.findOneAndUpdate(
-    { _id: new ObjectId(id), userId: user._id },
+    { _id: paramsParsed.id, userId: user._id },
     update as any,
     { returnDocument: "after" }
   );
