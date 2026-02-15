@@ -9,12 +9,9 @@ export const paperFolderSchema = z.object({
 });
 
 export const papersBulkSchema = z.object({
-  action: z.string({ required_error: "Invalid request body" }),
+  action: z.string({ error: "Invalid request body" }),
   paperIds: z
-    .array(z.string(), {
-      required_error: "Invalid request body",
-      invalid_type_error: "Invalid request body",
-    })
+    .array(z.string(), { error: "Invalid request body" })
     .min(1, "Invalid request body"),
   folderId: z.string().nullable().optional(),
 });

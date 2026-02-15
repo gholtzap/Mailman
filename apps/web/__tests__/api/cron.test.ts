@@ -210,7 +210,7 @@ describe('/api/cron/process-schedules', () => {
       )
     })
 
-    it('should pause schedule if user has no API key', async () => {
+    it('should process schedule without AI when user has no API key', async () => {
       const user = await createTestUser(client, {
         apiKey: undefined,
       })
@@ -231,13 +231,17 @@ describe('/api/cron/process-schedules', () => {
 
       expect(response.status).toBe(200)
       expect(data.processed).toBe(1)
-      expect(data.results[0].status).toBe('paused')
-      expect(data.results[0].reason).toBe('No API key configured')
-      expect(mockProcessBatchScrape).not.toHaveBeenCalled()
+      expect(data.results[0].status).toBe('success')
+      expect(mockProcessBatchScrape).toHaveBeenCalledWith(
+        expect.objectContaining({
+          encryptedApiKey: null,
+        })
+      )
 
       const db = getTestDb()
       const updatedSchedule = await db.collection('recurring_schedules').findOne({ _id: schedule._id })
-      expect(updatedSchedule?.status).toBe('paused')
+      expect(updatedSchedule?.status).toBe('active')
+      expect(updatedSchedule?.nextRunAt.getTime()).toBeGreaterThan(Date.now())
     })
 
     it('should process multiple due schedules', async () => {

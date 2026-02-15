@@ -10,11 +10,7 @@ export const processingBatchSchema = z.object({
   papersPerCategory: z.number().optional(),
   keywords: z.array(z.string()).optional(),
   keywordMatchMode: z
-    .string()
-    .refine(
-      (val) => ["any", "all"].includes(val),
-      "keywordMatchMode must be 'any' or 'all'"
-    )
+    .enum(["any", "all"], { error: "keywordMatchMode must be 'any' or 'all'" })
     .optional(),
   skipAI: z.boolean().optional(),
 });

@@ -5,11 +5,11 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MISSING_REQUIRED = "Missing required fields: name, categories, papersPerCategory";
 
 export const scheduleCreateSchema = z.object({
-  name: z.string({ required_error: MISSING_REQUIRED }).min(1, MISSING_REQUIRED),
+  name: z.string({ error: MISSING_REQUIRED }).min(1, MISSING_REQUIRED),
   categories: z
-    .array(z.string(), { required_error: MISSING_REQUIRED })
+    .array(z.string(), { error: MISSING_REQUIRED })
     .min(1, MISSING_REQUIRED),
-  papersPerCategory: z.number({ required_error: MISSING_REQUIRED }).min(1, MISSING_REQUIRED),
+  papersPerCategory: z.number({ error: MISSING_REQUIRED }).min(1, MISSING_REQUIRED),
   intervalDays: z.number().optional(),
   email: z
     .string()
@@ -17,13 +17,9 @@ export const scheduleCreateSchema = z.object({
     .optional(),
   keywords: z.array(z.string()).optional(),
   keywordMatchMode: z
-    .string()
-    .refine(
-      (val) => ["any", "all"].includes(val),
-      "keywordMatchMode must be 'any' or 'all'"
-    )
+    .enum(["any", "all"], { error: "keywordMatchMode must be 'any' or 'all'" })
     .optional(),
-  scheduleType: z.string().optional(),
+  scheduleType: z.enum(["interval", "weekly"], { error: "scheduleType must be 'interval' or 'weekly'" }).optional(),
   weekDays: z.array(z.number()).optional(),
   preferredHour: z.number().optional(),
   timezone: z.string().optional(),
@@ -35,18 +31,14 @@ export const scheduleUpdateSchema = z.object({
   papersPerCategory: z.number().optional(),
   intervalDays: z.number().optional(),
   status: z
-    .string()
-    .refine(
-      (val) => ["active", "paused"].includes(val),
-      "status must be either 'active' or 'paused'"
-    )
+    .enum(["active", "paused"], { error: "status must be either 'active' or 'paused'" })
     .optional(),
   email: z
     .string()
     .refine((val) => !val || emailRegex.test(val), "Invalid email format")
     .optional()
     .nullable(),
-  scheduleType: z.string().optional(),
+  scheduleType: z.enum(["interval", "weekly"], { error: "scheduleType must be 'interval' or 'weekly'" }).optional(),
   weekDays: z.array(z.number()).optional(),
   preferredHour: z.number().optional(),
   timezone: z.string().optional(),

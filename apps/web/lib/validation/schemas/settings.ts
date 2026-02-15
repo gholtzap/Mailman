@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const apiKeySchema = z.object({
   apiKey: z
-    .string()
+    .string({ error: "Invalid API key format" })
     .refine((val) => val.startsWith("sk-ant-"), "Invalid API key format"),
 });
 
@@ -12,11 +12,7 @@ export const settingsUpdateSchema = z.object({
   papersPerCategory: z.number().optional(),
   keywords: z.array(z.string()).optional(),
   keywordMatchMode: z
-    .string()
-    .refine(
-      (val) => ["any", "all"].includes(val),
-      "keywordMatchMode must be 'any' or 'all'"
-    )
+    .enum(["any", "all"], { error: "keywordMatchMode must be 'any' or 'all'" })
     .optional(),
   email: z
     .union([
@@ -27,6 +23,6 @@ export const settingsUpdateSchema = z.object({
 });
 
 export const batchCompletionEmailSchema = z.object({
-  jobId: z.string({ required_error: "jobId is required" }).min(1, "jobId is required"),
+  jobId: z.string({ error: "jobId is required" }).min(1, "jobId is required"),
   scheduleId: z.string().optional(),
 });
