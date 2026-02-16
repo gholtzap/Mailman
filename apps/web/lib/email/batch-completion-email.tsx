@@ -10,6 +10,7 @@ import {
   Hr,
   Heading,
   Preview,
+  Img,
 } from "@react-email/components";
 
 interface PaperSummary {
@@ -23,12 +24,14 @@ interface BatchCompletionEmailProps {
   scheduleName: string;
   papers: PaperSummary[];
   categories: string[];
+  appUrl: string;
 }
 
 export function BatchCompletionEmail({
   scheduleName,
   papers,
   categories,
+  appUrl,
 }: BatchCompletionEmailProps) {
   const paperCount = papers.length;
   const pluralized = paperCount !== 1 ? "s" : "";
@@ -40,17 +43,22 @@ export function BatchCompletionEmail({
       <Body style={body}>
         <Container style={container}>
           <Section style={headerSection}>
+            <Img
+              src={`${appUrl}/mailman-logo.png`}
+              alt="Mailman"
+              width="48"
+              height="48"
+              style={logoImg}
+            />
             <Heading style={h1}>Paper Summaries Ready</Heading>
-            <Text style={subtitle}>Schedule: {scheduleName}</Text>
+            <Text style={subtitle}>{scheduleName}</Text>
           </Section>
 
           <Section style={statsBox}>
-            <Text style={statsTitle}>
-              <strong>
-                Processed {paperCount} paper{pluralized}
-              </strong>{" "}
-              from categories:
+            <Text style={statsCount}>
+              {paperCount} paper{pluralized}
             </Text>
+            <Text style={statsLabel}>processed</Text>
             <Text style={statsCategories}>{categories.join(", ")}</Text>
           </Section>
 
@@ -60,7 +68,9 @@ export function BatchCompletionEmail({
                 <Heading as="h3" style={paperTitle}>
                   {paper.title}
                 </Heading>
-                <Text style={paperArxivId}>{paper.arxivId}</Text>
+                <Text style={paperArxivId}>
+                  <span style={arxivBadge}>{paper.arxivId}</span>
+                </Text>
                 <Text style={paperSummary}>{paper.summary}</Text>
                 <Button style={viewButton} href={paper.url}>
                   View Full Summary
@@ -74,7 +84,11 @@ export function BatchCompletionEmail({
           <Section style={footerSection}>
             <Text style={footerText}>
               You received this email because you have a recurring schedule set
-              up in Mailman.
+              up in{" "}
+              <Link href={appUrl} style={footerLink}>
+                Mailman
+              </Link>
+              .
             </Text>
           </Section>
         </Container>
@@ -119,109 +133,141 @@ const body = {
   padding: "0",
   fontFamily:
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-  backgroundColor: "#ffffff",
+  backgroundColor: "#f4f4f5",
 };
 
 const container = {
   maxWidth: "600px",
   margin: "0 auto",
-  padding: "40px 20px",
+  padding: "0",
+  backgroundColor: "#ffffff",
 };
 
 const headerSection = {
   textAlign: "center" as const,
-  marginBottom: "32px",
+  padding: "32px 24px 24px",
+  backgroundColor: "#0f1117",
+};
+
+const logoImg = {
+  margin: "0 auto 16px",
 };
 
 const h1 = {
-  margin: "0 0 8px 0",
-  fontSize: "24px",
+  margin: "0 0 6px 0",
+  fontSize: "22px",
   fontWeight: "700",
-  color: "#111827",
+  color: "#ffffff",
 };
 
 const subtitle = {
   margin: "0",
   fontSize: "14px",
-  color: "#6b7280",
+  color: "#71717a",
 };
 
 const statsBox = {
-  marginBottom: "24px",
-  padding: "16px",
-  backgroundColor: "#eff6ff",
-  borderRadius: "8px",
-  border: "1px solid #bfdbfe",
+  margin: "24px 24px 0",
+  padding: "20px",
+  backgroundColor: "#f4f4f5",
+  borderRadius: "6px",
+  border: "1px solid #e4e4e7",
+  textAlign: "center" as const,
 };
 
-const statsTitle = {
-  margin: "0 0 8px 0",
+const statsCount = {
+  margin: "0",
+  fontSize: "32px",
+  fontWeight: "700",
+  color: "#18181b",
+  lineHeight: "1.2",
+};
+
+const statsLabel = {
+  margin: "0 0 12px 0",
   fontSize: "14px",
-  color: "#1e40af",
+  color: "#71717a",
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.05em",
 };
 
 const statsCategories = {
   margin: "0",
   fontSize: "13px",
-  color: "#3b82f6",
+  color: "#3f3f46",
   fontFamily: "monospace",
 };
 
 const papersSection = {
-  marginBottom: "32px",
+  padding: "24px 24px 8px",
 };
 
 const paperCard = {
-  marginBottom: "24px",
+  marginBottom: "16px",
   padding: "16px",
-  backgroundColor: "#f9fafb",
-  borderRadius: "8px",
-  border: "1px solid #e5e7eb",
+  backgroundColor: "#ffffff",
+  borderRadius: "6px",
+  border: "1px solid #e4e4e7",
+  borderLeft: "3px solid #a51c30",
 };
 
 const paperTitle = {
   margin: "0 0 8px 0",
-  fontSize: "16px",
+  fontSize: "15px",
   fontWeight: "600",
-  color: "#111827",
+  color: "#18181b",
 };
 
-const paperArxivId = {
-  margin: "0 0 8px 0",
-  fontSize: "13px",
-  color: "#6b7280",
+const arxivBadge = {
+  display: "inline-block" as const,
+  padding: "2px 8px",
+  backgroundColor: "#f4f4f5",
+  borderRadius: "10px",
+  fontSize: "12px",
+  color: "#71717a",
   fontFamily: "monospace",
 };
 
+const paperArxivId = {
+  margin: "0 0 10px 0",
+  fontSize: "13px",
+};
+
 const paperSummary = {
-  margin: "0 0 12px 0",
+  margin: "0 0 14px 0",
   fontSize: "14px",
-  lineHeight: "1.6",
-  color: "#374151",
+  lineHeight: "1.7",
+  color: "#3f3f46",
 };
 
 const viewButton = {
   display: "inline-block",
   padding: "8px 16px",
-  backgroundColor: "#3b82f6",
+  backgroundColor: "#a51c30",
   color: "#ffffff",
   textDecoration: "none",
-  borderRadius: "6px",
+  borderRadius: "4px",
   fontSize: "13px",
   fontWeight: "500",
 };
 
 const divider = {
-  borderColor: "#e5e7eb",
-  marginTop: "24px",
+  borderColor: "#e4e4e7",
+  margin: "0 24px",
 };
 
 const footerSection = {
   textAlign: "center" as const,
+  padding: "16px 24px 24px",
 };
 
 const footerText = {
   margin: "0",
   fontSize: "13px",
-  color: "#9ca3af",
+  color: "#71717a",
+};
+
+const footerLink = {
+  color: "#a51c30",
+  textDecoration: "none",
 };
