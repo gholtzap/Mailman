@@ -68,7 +68,7 @@ export async function sendBatchCompletionEmail({
           pp.humanizedContent?.substring(0, 300) ||
           pp.generatedContent?.substring(0, 300) ||
           "Summary not available",
-        url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/papers/${pp._id}`,
+        url: `${process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")}/papers/${pp._id}`,
       };
     })
   );
