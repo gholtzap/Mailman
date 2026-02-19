@@ -63,13 +63,16 @@ export async function sendBatchCompletionEmail({
       const paper = await papers.findOne({ _id: pp.paperId });
       if (!paper) return null;
 
+      const abstract = paper.abstract
+        ? paper.abstract.length > 300
+          ? paper.abstract.substring(0, 300).trimEnd() + "..."
+          : paper.abstract
+        : "Summary not available";
+
       return {
         title: paper.title,
         arxivId: paper.arxivId,
-        summary:
-          pp.humanizedContent?.substring(0, 300) ||
-          pp.generatedContent?.substring(0, 300) ||
-          "Summary not available",
+        summary: abstract,
         url: `${appUrl}/papers/${pp._id}`,
       };
     })
