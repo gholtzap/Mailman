@@ -280,6 +280,55 @@ input, textarea, select, button {
   }
 }
 
+.step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.mock-card {
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 0.5px solid var(--border-primary);
+  border-radius: 6px;
+}
+
+.category-tag {
+  padding: 4px 10px;
+  background: var(--bg-tertiary);
+  border: 0.5px solid var(--border-secondary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 3px;
+}
+
+.day-pill {
+  padding: 4px 10px;
+  background: var(--bg-tertiary);
+  border: 0.5px solid var(--border-secondary);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.day-pill-active {
+  background: var(--accent-muted);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
 .cl-socialButtonsBlockButton,
 .cl-socialButtonsBlockButton span,
 .cl-socialButtonsBlockButton__google,
