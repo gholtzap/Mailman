@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import StatusBadge from "./StatusBadge";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 interface PaperCardProps {
   paper: {
@@ -112,7 +113,7 @@ export default function PaperCard({ paper, folderColor, onSelect, onContextMenu,
                       borderRadius: "3px",
                     }}
                   >
-                    {cat}
+                    {getCategoryDisplayName(cat)}
                   </span>
                 ))}
               </div>

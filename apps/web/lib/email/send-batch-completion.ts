@@ -11,6 +11,7 @@ import {
   generateBatchCompletionText,
 } from "@/lib/email/batch-completion-email";
 import { createLogger } from "@/lib/logging";
+import { getCategoryDisplayName, getExternalPaperUrl } from "@/lib/categories";
 
 interface SendBatchCompletionEmailParams {
   jobId: string;
@@ -72,8 +73,10 @@ export async function sendBatchCompletionEmail({
       return {
         title: paper.title,
         arxivId: paper.arxivId,
+        source: paper.source,
         summary: abstract,
         url: `${appUrl}/papers/${pp._id}`,
+        externalUrl: getExternalPaperUrl(paper.arxivId, paper.source),
       };
     })
   );
@@ -85,11 +88,13 @@ export async function sendBatchCompletionEmail({
     return { sent: false, paperCount: 0 };
   }
 
+  const categoryDisplayNames = jobCategories.map(getCategoryDisplayName);
+
   const htmlEmail = await render(
     BatchCompletionEmail({
       scheduleName,
       papers: validPaperSummaries,
-      categories: jobCategories,
+      categories: categoryDisplayNames,
       appUrl,
     })
   );
@@ -97,7 +102,7 @@ export async function sendBatchCompletionEmail({
   const textEmail = generateBatchCompletionText(
     scheduleName,
     validPaperSummaries,
-    jobCategories
+    categoryDisplayNames
   );
 
   const resend = getResendClient();

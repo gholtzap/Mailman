@@ -16,8 +16,10 @@ import {
 interface PaperSummary {
   title: string;
   arxivId: string;
+  source?: "arxiv" | "medrxiv";
   summary: string;
   url: string;
+  externalUrl: string;
 }
 
 interface BatchCompletionEmailProps {
@@ -68,8 +70,14 @@ export function BatchCompletionEmail({
                 <Heading as="h3" style={paperTitle}>
                   {paper.title}
                 </Heading>
-                <Text style={paperArxivId}>
-                  <span style={arxivBadge}>{paper.arxivId}</span>
+                <Text style={paperIdRow}>
+                  <span style={sourceBadge}>
+                    {paper.source === "medrxiv" ? "medRxiv" : "arXiv"}
+                  </span>
+                  {" "}
+                  <Link href={paper.externalUrl} style={idLink}>
+                    {paper.arxivId}
+                  </Link>
                 </Text>
                 <Text style={paperSummary}>{paper.summary}</Text>
                 <Button style={viewButton} href={paper.url}>
@@ -106,7 +114,8 @@ export function generateBatchCompletionText(
     .map(
       (paper, index) => `
 ${index + 1}. ${paper.title}
-   ${paper.arxivId}
+   [${paper.source === "medrxiv" ? "medRxiv" : "arXiv"}] ${paper.arxivId}
+   ${paper.externalUrl}
 
    ${paper.summary}
 
@@ -218,17 +227,24 @@ const paperTitle = {
   color: "#18181b",
 };
 
-const arxivBadge = {
+const sourceBadge = {
   display: "inline-block" as const,
   padding: "2px 8px",
   backgroundColor: "#f4f4f5",
   borderRadius: "10px",
-  fontSize: "12px",
-  color: "#71717a",
-  fontFamily: "monospace",
+  fontSize: "11px",
+  fontWeight: "600" as const,
+  color: "#52525b",
 };
 
-const paperArxivId = {
+const idLink = {
+  color: "#71717a",
+  fontFamily: "monospace",
+  fontSize: "12px",
+  textDecoration: "none",
+};
+
+const paperIdRow = {
   margin: "0 0 10px 0",
   fontSize: "13px",
 };

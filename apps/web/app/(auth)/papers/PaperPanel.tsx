@@ -5,6 +5,7 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import StatusBadge from "./StatusBadge";
+import { getCategoryDisplayName, getSourceLabel } from "@/lib/categories";
 
 interface ProcessedPaper {
   _id: string;
@@ -30,6 +31,7 @@ interface PaperMeta {
   pdfUrl: string;
   publishedDate: string;
   pageCount?: number;
+  source?: "arxiv" | "medrxiv";
 }
 
 interface PaperPanelProps {
@@ -138,7 +140,7 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
                 <MetaRow label="Authors">
                   <span style={{ color: "var(--text-primary)" }}>{paper.authors.join(", ")}</span>
                 </MetaRow>
-                <MetaRow label="arXiv">
+                <MetaRow label={getSourceLabel(paper.source)}>
                   <a
                     href={paper.pdfUrl}
                     target="_blank"
@@ -151,7 +153,7 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
                   </a>
                 </MetaRow>
                 <MetaRow label="Categories">
-                  <span style={{ color: "var(--text-primary)" }}>{paper.categories.join(", ")}</span>
+                  <span style={{ color: "var(--text-primary)" }}>{paper.categories.map(getCategoryDisplayName).join(", ")}</span>
                 </MetaRow>
                 {paper.pageCount && (
                   <MetaRow label="Pages">

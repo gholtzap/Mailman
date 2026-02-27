@@ -6,6 +6,7 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import StatusBadge from "../StatusBadge";
+import { getCategoryDisplayName, getSourceLabel } from "@/lib/categories";
 
 interface ProcessedPaper {
   _id: string;
@@ -32,6 +33,7 @@ interface Paper {
   pdfUrl: string;
   publishedDate: string;
   pageCount?: number;
+  source?: "arxiv" | "medrxiv";
 }
 
 export default function PaperDetailPage() {
@@ -112,7 +114,7 @@ export default function PaperDetailPage() {
             <span style={{ color: 'var(--text-primary)' }}>{paper.authors.join(", ")}</span>
           </div>
           <div>
-            <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>arXiv ID:</span>{' '}
+            <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{paper.source === "medrxiv" ? "DOI:" : "arXiv ID:"}</span>{' '}
             <a
               href={paper.pdfUrl}
               target="_blank"
@@ -128,10 +130,22 @@ export default function PaperDetailPage() {
             >
               {processedPaper.arxivId}
             </a>
+            <span style={{
+              marginLeft: '8px',
+              padding: '1px 6px',
+              background: 'var(--bg-tertiary)',
+              border: '0.5px solid var(--border-secondary)',
+              borderRadius: '3px',
+              fontSize: '11px',
+              fontWeight: 500,
+              color: 'var(--text-muted)'
+            }}>
+              {getSourceLabel(paper.source)}
+            </span>
           </div>
           <div>
             <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Categories:</span>{' '}
-            <span style={{ color: 'var(--text-primary)' }}>{paper.categories.join(", ")}</span>
+            <span style={{ color: 'var(--text-primary)' }}>{paper.categories.map(getCategoryDisplayName).join(", ")}</span>
           </div>
           {paper.pageCount && (
             <div>
