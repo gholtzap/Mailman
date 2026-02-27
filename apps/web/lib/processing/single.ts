@@ -76,7 +76,11 @@ export async function processSinglePaper({
       { $set: { status: "processing", updatedAt: new Date() } }
     );
 
-    const pdfResponse = await fetch(`https://arxiv.org/pdf/${arxivId}.pdf`);
+    const papersCollection = await getPapersCollection();
+    const paperRecord = await papersCollection.findOne({ arxivId });
+    const pdfUrl = paperRecord?.pdfUrl || `https://arxiv.org/pdf/${arxivId}.pdf`;
+
+    const pdfResponse = await fetch(pdfUrl);
     if (!pdfResponse.ok) {
       throw new Error(`Failed to fetch PDF: ${pdfResponse.status}`);
     }

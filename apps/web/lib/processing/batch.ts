@@ -5,8 +5,10 @@ import {
   getProcessingJobsCollection,
 } from "@/lib/db/collections";
 import { processSinglePaper } from "@/lib/processing/single";
+import { fetchMedrxivPapers } from "@/lib/processing/medrxiv";
 import { sendBatchCompletionEmail } from "@/lib/email/send-batch-completion";
 import { createLogger } from "@/lib/logging";
+import type { PaperSource } from "@/lib/types";
 
 interface ProcessBatchScrapeParams {
   jobId: string;
@@ -21,8 +23,9 @@ interface ProcessBatchScrapeParams {
   scheduleName?: string;
 }
 
-interface ArxivPaper {
+interface FetchedPaper {
   arxivId: string;
+  source?: PaperSource;
   title: string;
   authors: string[];
   abstract: string;
@@ -54,7 +57,7 @@ async function fetchArxivPapers(
   category: string,
   maxResults: number,
   log: ReturnType<typeof createLogger>
-): Promise<ArxivPaper[]> {
+): Promise<FetchedPaper[]> {
   const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
   const response = await fetch(url, {
     headers: {
@@ -77,7 +80,7 @@ async function fetchArxivPapers(
     return [];
   }
 
-  const papers: ArxivPaper[] = [];
+  const papers: FetchedPaper[] = [];
 
   for (const entry of entries) {
     const idMatch = entry.match(/<id>(.*?)<\/id>/);
@@ -115,6 +118,7 @@ async function fetchArxivPapers(
 
     papers.push({
       arxivId,
+      source: "arxiv",
       title,
       authors,
       abstract,
@@ -158,23 +162,7 @@ export async function processBatchScrape({
     let totalFetched = 0;
     let categoriesSucceeded = 0;
 
-    for (const category of categories) {
-      log.info({ category, papersPerCategory }, "Fetching papers for category");
-
-      let fetchedPapers: ArxivPaper[];
-      try {
-        fetchedPapers = await fetchArxivPapers(category, papersPerCategory, log);
-        categoriesSucceeded++;
-      } catch (fetchError) {
-        const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
-        const name = fetchError instanceof Error ? fetchError.name : "Unknown";
-        log.error({ err: fetchError, category, errorName: name, errorMessage: message }, "Failed to fetch papers for category");
-        continue;
-      }
-
-      totalFetched += fetchedPapers.length;
-      log.info({ category, fetched: fetchedPapers.length }, "Fetched papers from arXiv");
-
+    async function processUpsertedPapers(fetchedPapers: FetchedPaper[]) {
       for (const paperData of fetchedPapers) {
         if (!matchesKeywords(paperData, keywords, keywordMatchMode)) {
           filteredCount++;
@@ -267,6 +255,53 @@ export async function processBatchScrape({
             $inc: { "progress.completed": 1 },
           }
         );
+      }
+    }
+
+    const arxivCategories = categories.filter((c) => !c.startsWith("medrxiv:"));
+    const medrxivCategoryIds = categories.filter((c) => c.startsWith("medrxiv:"));
+
+    for (const category of arxivCategories) {
+      log.info({ category, papersPerCategory }, "Fetching papers for category");
+
+      let fetchedPapers: FetchedPaper[];
+      try {
+        fetchedPapers = await fetchArxivPapers(category, papersPerCategory, log);
+        categoriesSucceeded++;
+      } catch (fetchError) {
+        const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        const name = fetchError instanceof Error ? fetchError.name : "Unknown";
+        log.error({ err: fetchError, category, errorName: name, errorMessage: message }, "Failed to fetch papers for category");
+        continue;
+      }
+
+      totalFetched += fetchedPapers.length;
+      log.info({ category, fetched: fetchedPapers.length }, "Fetched papers from arxiv");
+
+      await processUpsertedPapers(fetchedPapers);
+    }
+
+    if (medrxivCategoryIds.length > 0) {
+      log.info({ categories: medrxivCategoryIds, papersPerCategory }, "Fetching papers from medrxiv");
+
+      try {
+        const medrxivPapers = await fetchMedrxivPapers(medrxivCategoryIds, papersPerCategory, log);
+        totalFetched += medrxivPapers.length;
+
+        const medrxivCategoriesWithPapers = new Set(
+          medrxivPapers.flatMap((p) => p.categories)
+        );
+        categoriesSucceeded += medrxivCategoryIds.filter((c) =>
+          medrxivCategoriesWithPapers.has(c)
+        ).length;
+
+        log.info({ fetched: medrxivPapers.length, categoriesWithPapers: medrxivCategoriesWithPapers.size }, "Fetched papers from medrxiv");
+
+        await processUpsertedPapers(medrxivPapers);
+      } catch (fetchError) {
+        const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        const name = fetchError instanceof Error ? fetchError.name : "Unknown";
+        log.error({ err: fetchError, errorName: name, errorMessage: message }, "Failed to fetch papers from medrxiv");
       }
     }
 
