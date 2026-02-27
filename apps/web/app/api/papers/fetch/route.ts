@@ -70,6 +70,7 @@ async function fetchArxivMetadata(arxivId: string) {
 
   return {
     arxivId,
+    source: "arxiv" as const,
     title,
     authors,
     abstract,

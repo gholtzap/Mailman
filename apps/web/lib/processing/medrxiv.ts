@@ -91,7 +91,11 @@ export async function fetchMedrxivPapers(
     return true;
   };
 
-  while (cursor < totalAvailable && !allCategoriesFull()) {
+  const MAX_API_PAGES = 20;
+  let pagesScanned = 0;
+
+  while (cursor < totalAvailable && !allCategoriesFull() && pagesScanned < MAX_API_PAGES) {
+    pagesScanned++;
     const url = `https://api.medrxiv.org/details/medrxiv/${fromStr}/${toStr}/${cursor}/json`;
 
     log.debug({ url, cursor, totalAvailable }, "Fetching medrxiv API page");
@@ -150,6 +154,13 @@ export async function fetchMedrxivPapers(
     }
 
     cursor += data.collection.length;
+  }
+
+  if (pagesScanned >= MAX_API_PAGES && !allCategoriesFull()) {
+    log.warn(
+      { pagesScanned, cursor, totalAvailable },
+      "Reached medrxiv API pagination limit before filling all categories"
+    );
   }
 
   const allPapers: MedrxivPaper[] = [];
