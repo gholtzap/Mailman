@@ -99,12 +99,17 @@ export async function POST(request: Request) {
           log.debug({ processedPaperId }, "Created new processed paper record");
         }
 
+        const arxivUrl = paper.source === "medrxiv"
+          ? `https://www.medrxiv.org/content/${paper.arxivId}`
+          : `https://arxiv.org/abs/${paper.arxivId}`;
+
         const job = await jobs.insertOne({
           userId: user._id!,
           type: "single_paper",
           status: "queued",
           input: {
-            arxivUrl: `https://arxiv.org/abs/${paper.arxivId}`,
+            arxivUrl,
+            arxivId: paper.arxivId,
             skipAI: skipAI || false,
           },
           progress: {

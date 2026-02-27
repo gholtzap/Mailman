@@ -81,6 +81,7 @@ export interface ProcessingJob {
   status: "queued" | "running" | "completed" | "failed";
   input: {
     arxivUrl?: string;
+    arxivId?: string;
     categories?: string[];
     papersPerCategory?: number;
     keywords?: string[];

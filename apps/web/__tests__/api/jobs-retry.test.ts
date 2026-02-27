@@ -232,6 +232,6 @@ describe('POST /api/jobs/[id]/retry', () => {
     const data = await response.json()
 
     expect(response.status).toBe(400)
-    expect(data.error).toBe('Job is missing arxivUrl')
+    expect(data.error).toBe('Job is missing paper identifier')
   })
 })

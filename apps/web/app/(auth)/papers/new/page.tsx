@@ -59,13 +59,13 @@ export default function NewPaperPage() {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-            arXiv URL or ID
+            arXiv or medRxiv URL
           </label>
           <input
             type="text"
             value={arxivUrl}
             onChange={(e) => setArxivUrl(e.target.value)}
-            placeholder="https://arxiv.org/abs/2401.12345 or 2401.12345"
+            placeholder="arxiv.org/abs/2401.12345 or medrxiv.org/content/10.1101/..."
             required
             style={{
               width: '100%',
@@ -169,8 +169,8 @@ export default function NewPaperPage() {
           fontSize: '13px',
           color: 'var(--text-secondary)'
         }}>
-          <li>Paste an arXiv URL or paper ID</li>
-          <li>We fetch the paper metadata from arXiv</li>
+          <li>Paste an arXiv or medRxiv URL (or arXiv paper ID)</li>
+          <li>We fetch the paper metadata from the source</li>
           <li>The paper is queued for processing with Claude</li>
           <li>You can view results in your dashboard</li>
         </ol>

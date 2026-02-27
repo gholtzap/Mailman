@@ -5,6 +5,7 @@ import { createLogger } from "@/lib/logging";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { papersFetchSchema } from "@/lib/validation/schemas/papers";
 import { apiError } from "@/lib/api/errors";
+import { MEDRXIV_CATEGORY_BY_API_NAME } from "@/lib/medrxiv-categories";
 
 function extractArxivId(url: string): string | null {
   const patterns = [
@@ -17,6 +18,19 @@ function extractArxivId(url: string): string | null {
     const match = url.match(pattern);
     if (match) return match[1];
   }
+
+  return null;
+}
+
+function extractMedrxivDoi(url: string): string | null {
+  const urlMatch = url.match(/medrxiv\.org\/content\/(10\.\d{4,9}\/[\d.]+)/);
+  if (urlMatch) return urlMatch[1];
+
+  const doiOrgMatch = url.match(/doi\.org\/(10\.1101\/[\d.]+)/);
+  if (doiOrgMatch) return doiOrgMatch[1];
+
+  const bareDoi = url.trim().match(/^(10\.1101\/[\d.]+)$/);
+  if (bareDoi) return bareDoi[1];
 
   return null;
 }
@@ -66,6 +80,62 @@ async function fetchArxivMetadata(arxivId: string) {
   };
 }
 
+interface MedrxivDetailEntry {
+  doi: string;
+  title: string;
+  authors: string;
+  date: string;
+  version: string;
+  type: string;
+  category: string;
+  abstract: string;
+}
+
+async function fetchMedrxivMetadata(doi: string) {
+  const response = await fetch(
+    `https://api.medrxiv.org/details/medrxiv/${doi}/na/json`,
+    {
+      headers: { "User-Agent": "PaperReader/1.0 (research-paper-aggregator)" },
+      signal: AbortSignal.timeout(30_000),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch from medrxiv API: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.collection || data.collection.length === 0) {
+    throw new Error("Paper not found in medrxiv");
+  }
+
+  const entry: MedrxivDetailEntry = data.collection[data.collection.length - 1];
+
+  const authors = entry.authors
+    .split(/;\s*/)
+    .map((a: string) => a.trim())
+    .filter(Boolean);
+
+  const apiCategory = entry.category.toLowerCase();
+  const categoryInfo = MEDRXIV_CATEGORY_BY_API_NAME.get(apiCategory);
+  const categoryId = categoryInfo
+    ? categoryInfo.id
+    : `medrxiv:${apiCategory.replace(/[\s/()]+/g, "-").replace(/-+/g, "-").replace(/(^-|-$)/g, "")}`;
+
+  return {
+    arxivId: doi,
+    source: "medrxiv" as const,
+    title: entry.title,
+    authors,
+    abstract: entry.abstract,
+    categories: [categoryId],
+    pdfUrl: `https://www.medrxiv.org/content/${doi}v${entry.version}.full.pdf`,
+    publishedDate: new Date(entry.date),
+    createdAt: new Date(),
+  };
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   const log = createLogger({ route: "papers-fetch", userId: userId || "anonymous" });
@@ -82,37 +152,43 @@ export async function POST(request: Request) {
     if (parsed.error) return parsed.error;
     const { arxivUrl } = parsed.data;
 
-    const arxivId = extractArxivId(arxivUrl);
-    if (!arxivId) {
-      log.warn({ arxivUrl }, "Invalid arXiv URL");
-      return apiError("Invalid arXiv URL", 400);
+    const medrxivDoi = extractMedrxivDoi(arxivUrl);
+    const paperId = medrxivDoi || extractArxivId(arxivUrl);
+
+    if (!paperId) {
+      log.warn({ arxivUrl }, "Invalid paper URL");
+      return apiError("Invalid arXiv or medrxiv URL", 400);
     }
 
-    log.debug({ arxivId }, "Extracted arXiv ID");
+    const source = medrxivDoi ? "medrxiv" : "arxiv";
+    log.debug({ arxivId: paperId, source }, "Extracted paper identifier");
 
     const papers = await getPapersCollection();
-    const existing = await papers.findOne({ arxivId });
+    const existing = await papers.findOne({ arxivId: paperId });
 
     if (existing) {
-      log.info({ arxivId }, "Paper already exists in database");
+      log.info({ arxivId: paperId }, "Paper already exists in database");
       return NextResponse.json({ paper: existing });
     }
 
-    log.info({ arxivId }, "Fetching metadata from arXiv API");
-    const metadata = await fetchArxivMetadata(arxivId);
+    log.info({ arxivId: paperId }, `Fetching metadata from ${source} API`);
+    const metadata = medrxivDoi
+      ? await fetchMedrxivMetadata(medrxivDoi)
+      : await fetchArxivMetadata(paperId);
+
     const result = await papers.updateOne(
-      { arxivId },
+      { arxivId: paperId },
       { $setOnInsert: metadata },
       { upsert: true }
     );
 
     if (result.upsertedId) {
-      log.info({ arxivId, paperId: result.upsertedId }, "Paper created successfully");
+      log.info({ arxivId: paperId, paperId: result.upsertedId }, "Paper created successfully");
       return NextResponse.json({ paper: { _id: result.upsertedId, ...metadata } });
     }
 
-    const finalPaper = await papers.findOne({ arxivId });
-    log.info({ arxivId }, "Paper retrieved successfully");
+    const finalPaper = await papers.findOne({ arxivId: paperId });
+    log.info({ arxivId: paperId }, "Paper retrieved successfully");
     return NextResponse.json({ paper: finalPaper });
   } catch (error) {
     log.error({ err: error }, "Failed to fetch paper");

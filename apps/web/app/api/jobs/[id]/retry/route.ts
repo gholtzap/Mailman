@@ -58,22 +58,13 @@ export async function POST(
     log.info({ jobId: parsed.id.toString(), jobType: job.type }, "Retrying job");
 
     if (job.type === "single_paper") {
-      const arxivUrl = job.input.arxivUrl;
-      if (!arxivUrl) {
-        await jobs.updateOne(
-          { _id: parsed.id },
-          { $set: { status: "failed", updatedAt: new Date() } }
-        );
-        return apiError("Job is missing arxivUrl", 400);
-      }
-
-      const arxivId = arxivUrl.split("/abs/")[1];
+      const arxivId = job.input.arxivId || job.input.arxivUrl?.split("/abs/")[1];
       if (!arxivId) {
         await jobs.updateOne(
           { _id: parsed.id },
           { $set: { status: "failed", updatedAt: new Date() } }
         );
-        return apiError("Could not extract arxivId from URL", 400);
+        return apiError("Job is missing paper identifier", 400);
       }
 
       const papers = await getPapersCollection();
