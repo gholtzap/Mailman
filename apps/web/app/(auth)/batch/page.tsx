@@ -4,11 +4,17 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ARXIV_CATEGORIES, POPULAR_CATEGORY_IDS } from "@/lib/arxiv-categories";
+import { MEDRXIV_CATEGORIES } from "@/lib/medrxiv-categories";
 import Modal from "@/app/components/Modal";
 
 const POPULAR_CATEGORIES = ARXIV_CATEGORIES.flatMap(section =>
   section.categories.filter(cat => POPULAR_CATEGORY_IDS.has(cat.id))
 );
+
+const ALL_CATEGORY_SECTIONS = [
+  ...ARXIV_CATEGORIES,
+  { section: "Medicine (medRxiv)", categories: MEDRXIV_CATEGORIES.map(c => ({ id: c.id, name: c.name })) },
+];
 
 export default function BatchScrapePage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -39,7 +45,7 @@ export default function BatchScrapePage() {
   };
 
   const filteredCategories = useMemo(() =>
-    ARXIV_CATEGORIES.map(section => ({
+    ALL_CATEGORY_SECTIONS.map(section => ({
       ...section,
       categories: section.categories.filter(cat => {
         if (!categoryFilter) return true;

@@ -3,7 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { RecurringSchedule, ProcessingJob } from "@/lib/types";
 import { ARXIV_CATEGORIES } from "@/lib/arxiv-categories";
+import { MEDRXIV_CATEGORIES } from "@/lib/medrxiv-categories";
 import Modal from "@/app/components/Modal";
+
+const ALL_CATEGORY_SECTIONS = [
+  ...ARXIV_CATEGORIES,
+  { section: "Medicine (medRxiv)", categories: MEDRXIV_CATEGORIES.map(c => ({ id: c.id, name: c.name })) },
+];
 
 const COMMON_TIMEZONES = [
   { value: "Pacific/Honolulu", label: "Hawaii (HST)" },
@@ -293,7 +299,7 @@ export default function SchedulesPage() {
     if (fieldErrors.has("weekDays")) setFieldErrors(prev => { const next = new Set(prev); next.delete("weekDays"); return next; });
   };
 
-  const filteredCategories = ARXIV_CATEGORIES.map(section => ({
+  const filteredCategories = ALL_CATEGORY_SECTIONS.map(section => ({
     ...section,
     categories: section.categories.filter(cat => {
       if (!categoryFilter) return true;
