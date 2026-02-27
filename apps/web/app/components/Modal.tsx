@@ -7,9 +7,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  maxWidth?: string;
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, maxWidth = "440px" }: ModalProps) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -48,7 +49,9 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           borderRadius: "8px",
           padding: "24px",
           width: "100%",
-          maxWidth: "440px",
+          maxWidth,
+          maxHeight: "calc(100vh - 32px)",
+          overflowY: "auto" as const,
           margin: "16px",
         }}
       >

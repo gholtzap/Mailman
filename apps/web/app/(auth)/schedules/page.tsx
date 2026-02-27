@@ -397,6 +397,369 @@ export default function SchedulesPage() {
     return "--";
   };
 
+  const renderFormFields = (mode: "create" | "edit") => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <label style={labelStyle}>Name</label>
+        <input
+          type="text"
+          value={formName}
+          onChange={(e) => {
+            setFormName(e.target.value);
+            if (fieldErrors.has("name")) setFieldErrors(prev => { const next = new Set(prev); next.delete("name"); return next; });
+          }}
+          placeholder="Daily AI Papers"
+          style={{
+            ...inputStyle,
+            ...(fieldErrors.has("name") ? { borderColor: 'rgb(239, 68, 68)', borderWidth: '1.5px' } : {}),
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--border-primary)'}
+        />
+      </div>
+
+      <div>
+        <label style={labelStyle}>
+          Categories {formCategories.length > 0 && `(${formCategories.length} selected)`}
+        </label>
+        <input
+          type="text"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          placeholder="Filter categories (e.g., machine learning, cs.AI, robotics)"
+          style={{ ...inputStyle, marginBottom: '8px' }}
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+        />
+        <div style={{
+          maxHeight: '300px',
+          overflowY: 'auto',
+          padding: '12px',
+          background: 'var(--bg-primary)',
+          border: fieldErrors.has("categories") ? '1.5px solid rgb(239, 68, 68)' : '0.5px solid var(--border-primary)',
+          borderRadius: '4px'
+        }}>
+          {filteredCategories.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              No categories match your filter
+            </div>
+          ) : (
+            filteredCategories.map(section => (
+            <div key={section.section} style={{ marginBottom: '16px' }}>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '8px',
+                paddingBottom: '4px',
+                borderBottom: '0.5px solid var(--border-primary)'
+              }}>
+                {section.section}
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '4px'
+              }}>
+                {section.categories.map(category => (
+                  <label
+                    key={category.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '6px',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-secondary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formCategories.includes(category.id)}
+                      onChange={() => toggleCategory(category.id)}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        cursor: 'pointer',
+                        accentColor: 'var(--accent)',
+                        flexShrink: 0
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-geist-mono)' }}>
+                        {category.id}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {category.name}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label style={labelStyle}>Papers per Category</label>
+        <input
+          type="number"
+          min="1"
+          max="20"
+          value={formPapersPerCategory || ''}
+          onChange={(e) => {
+            const parsed = parseInt(e.target.value, 10);
+            setFormPapersPerCategory(isNaN(parsed) ? 0 : Math.min(parsed, 20));
+          }}
+          style={{
+            ...inputStyle,
+            fontFamily: 'var(--font-geist-mono)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+          placeholder="5"
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border-primary)';
+            if (!formPapersPerCategory) setFormPapersPerCategory(1);
+          }}
+        />
+      </div>
+
+      <div>
+        <label style={labelStyle}>Email for Summaries (optional)</label>
+        <input
+          type="email"
+          value={formEmail}
+          onChange={(e) => setFormEmail(e.target.value)}
+          placeholder="you@example.com"
+          style={inputStyle}
+          onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+        />
+        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+          Summaries will be sent to this email when processing completes
+        </p>
+      </div>
+
+      <div>
+        <label style={labelStyle}>Schedule Type</label>
+        <div style={{ display: 'flex', gap: '0px' }}>
+          <button
+            type="button"
+            onClick={() => setFormScheduleType("interval")}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              background: formScheduleType === "interval" ? 'var(--accent)' : 'var(--bg-primary)',
+              color: formScheduleType === "interval" ? 'white' : 'var(--text-secondary)',
+              border: '0.5px solid var(--border-primary)',
+              borderRadius: '4px 0 0 4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
+          >
+            Every X days
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormScheduleType("weekly")}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              background: formScheduleType === "weekly" ? 'var(--accent)' : 'var(--bg-primary)',
+              color: formScheduleType === "weekly" ? 'white' : 'var(--text-secondary)',
+              border: '0.5px solid var(--border-primary)',
+              borderLeft: 'none',
+              borderRadius: '0 4px 4px 0',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
+          >
+            Days of week
+          </button>
+        </div>
+      </div>
+
+      {formScheduleType === "interval" ? (
+        <div>
+          <label style={labelStyle}>Repeat every (days)</label>
+          <input
+            type="number"
+            min="1"
+            max="90"
+            value={formIntervalDays}
+            onChange={(e) => {
+              let value = e.target.value;
+              if (value.length > 1 && value.startsWith('0')) {
+                value = value.replace(/^0+/, '');
+              }
+              setFormIntervalDays(Number(value) || 0);
+            }}
+            style={{
+              ...inputStyle,
+              fontFamily: 'var(--font-geist-mono)',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+          />
+        </div>
+      ) : (
+        <div>
+          <label style={labelStyle}>Days of week</label>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {DAY_LABELS.map((label, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => toggleWeekDay(index)}
+                style={{
+                  flex: 1,
+                  padding: '8px 4px',
+                  background: formWeekDays.includes(index) ? 'var(--accent)' : 'var(--bg-primary)',
+                  color: formWeekDays.includes(index) ? 'white' : 'var(--text-secondary)',
+                  border: fieldErrors.has("weekDays") && !formWeekDays.includes(index)
+                    ? '1.5px solid rgb(239, 68, 68)'
+                    : '0.5px solid var(--border-primary)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div>
+          <label style={labelStyle}>Time of day</label>
+          <select
+            value={formPreferredHour}
+            onChange={(e) => setFormPreferredHour(Number(e.target.value))}
+            style={selectStyle}
+            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+          >
+            {Array.from({ length: 24 }, (_, i) => (
+              <option key={i} value={i}>{formatHour(i)}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={labelStyle}>Timezone</label>
+          <select
+            value={formTimezone}
+            onChange={(e) => setFormTimezone(e.target.value)}
+            style={selectStyle}
+            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
+          >
+            {timezoneOptions.map((tz) => (
+              <option key={tz.value} value={tz.value}>{tz.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+        {mode === "edit" ? (
+          <>
+            <button
+              onClick={handleUpdate}
+              disabled={saving}
+              style={{
+                padding: '8px 12px',
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.5 : 1,
+                transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                minHeight: '44px'
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) e.currentTarget.style.background = 'var(--accent-hover)';
+              }}
+              onMouseLeave={(e) => {
+                if (!saving) e.currentTarget.style.background = 'var(--accent)';
+              }}
+            >
+              Update Schedule
+            </button>
+            <button
+              onClick={handleCancelEdit}
+              disabled={saving}
+              style={{
+                padding: '8px 12px',
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-primary)',
+                border: '0.5px solid var(--border-primary)',
+                borderRadius: '4px',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.5 : 1,
+                transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                minHeight: '44px'
+              }}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={handleCreate}
+            disabled={saving}
+            style={{
+              padding: '8px 12px',
+              background: 'var(--accent)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.5 : 1,
+              transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+              minHeight: '44px'
+            }}
+            onMouseEnter={(e) => {
+              if (!saving) e.currentTarget.style.background = 'var(--accent-hover)';
+            }}
+            onMouseLeave={(e) => {
+              if (!saving) e.currentTarget.style.background = 'var(--accent)';
+            }}
+          >
+            Create Schedule
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="p-4 md:p-8 max-w-screen-xl">
@@ -422,369 +785,10 @@ export default function SchedulesPage() {
           padding: '16px'
         }}>
           <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-            {editingId ? "Edit Schedule" : "New Schedule"}
+            New Schedule
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Name</label>
-              <input
-                type="text"
-                value={formName}
-                onChange={(e) => {
-                  setFormName(e.target.value);
-                  if (fieldErrors.has("name")) setFieldErrors(prev => { const next = new Set(prev); next.delete("name"); return next; });
-                }}
-                placeholder="Daily AI Papers"
-                style={{
-                  ...inputStyle,
-                  ...(fieldErrors.has("name") ? { borderColor: 'rgb(239, 68, 68)', borderWidth: '1.5px' } : {}),
-                }}
-                onFocus={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--accent)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--border-primary)'}
-              />
-            </div>
-
-            <div>
-              <label style={labelStyle}>
-                Categories {formCategories.length > 0 && `(${formCategories.length} selected)`}
-              </label>
-              <input
-                type="text"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                placeholder="Filter categories (e.g., machine learning, cs.AI, robotics)"
-                style={{ ...inputStyle, marginBottom: '8px' }}
-                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
-              />
-              <div style={{
-                maxHeight: '300px',
-                overflowY: 'auto',
-                padding: '12px',
-                background: 'var(--bg-primary)',
-                border: fieldErrors.has("categories") ? '1.5px solid rgb(239, 68, 68)' : '0.5px solid var(--border-primary)',
-                borderRadius: '4px'
-              }}>
-                {filteredCategories.length === 0 ? (
-                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                    No categories match your filter
-                  </div>
-                ) : (
-                  filteredCategories.map(section => (
-                  <div key={section.section} style={{ marginBottom: '16px' }}>
-                    <div style={{
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: 'var(--text-secondary)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      marginBottom: '8px',
-                      paddingBottom: '4px',
-                      borderBottom: '0.5px solid var(--border-primary)'
-                    }}>
-                      {section.section}
-                    </div>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                      gap: '4px'
-                    }}>
-                      {section.categories.map(category => (
-                        <label
-                          key={category.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '6px',
-                            cursor: 'pointer',
-                            borderRadius: '4px',
-                            transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--bg-secondary)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formCategories.includes(category.id)}
-                            onChange={() => toggleCategory(category.id)}
-                            style={{
-                              width: '16px',
-                              height: '16px',
-                              cursor: 'pointer',
-                              accentColor: 'var(--accent)',
-                              flexShrink: 0
-                            }}
-                          />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-geist-mono)' }}>
-                              {category.id}
-                            </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {category.name}
-                            </div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Papers per Category</label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={formPapersPerCategory || ''}
-                onChange={(e) => {
-                  const parsed = parseInt(e.target.value, 10);
-                  setFormPapersPerCategory(isNaN(parsed) ? 0 : Math.min(parsed, 20));
-                }}
-                style={{
-                  ...inputStyle,
-                  fontFamily: 'var(--font-geist-mono)',
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-                placeholder="5"
-                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-primary)';
-                  if (!formPapersPerCategory) setFormPapersPerCategory(1);
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={labelStyle}>Email for Summaries (optional)</label>
-              <input
-                type="email"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                placeholder="you@example.com"
-                style={inputStyle}
-                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
-              />
-              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                Summaries will be sent to this email when processing completes
-              </p>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Schedule Type</label>
-              <div style={{ display: 'flex', gap: '0px' }}>
-                <button
-                  type="button"
-                  onClick={() => setFormScheduleType("interval")}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    background: formScheduleType === "interval" ? 'var(--accent)' : 'var(--bg-primary)',
-                    color: formScheduleType === "interval" ? 'white' : 'var(--text-secondary)',
-                    border: '0.5px solid var(--border-primary)',
-                    borderRadius: '4px 0 0 4px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-                  }}
-                >
-                  Every X days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormScheduleType("weekly")}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    background: formScheduleType === "weekly" ? 'var(--accent)' : 'var(--bg-primary)',
-                    color: formScheduleType === "weekly" ? 'white' : 'var(--text-secondary)',
-                    border: '0.5px solid var(--border-primary)',
-                    borderLeft: 'none',
-                    borderRadius: '0 4px 4px 0',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-                  }}
-                >
-                  Days of week
-                </button>
-              </div>
-            </div>
-
-            {formScheduleType === "interval" ? (
-              <div>
-                <label style={labelStyle}>Repeat every (days)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="90"
-                  value={formIntervalDays}
-                  onChange={(e) => {
-                    let value = e.target.value;
-                    if (value.length > 1 && value.startsWith('0')) {
-                      value = value.replace(/^0+/, '');
-                    }
-                    setFormIntervalDays(Number(value) || 0);
-                  }}
-                  style={{
-                    ...inputStyle,
-                    fontFamily: 'var(--font-geist-mono)',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
-                />
-              </div>
-            ) : (
-              <div>
-                <label style={labelStyle}>Days of week</label>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {DAY_LABELS.map((label, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => toggleWeekDay(index)}
-                      style={{
-                        flex: 1,
-                        padding: '8px 4px',
-                        background: formWeekDays.includes(index) ? 'var(--accent)' : 'var(--bg-primary)',
-                        color: formWeekDays.includes(index) ? 'white' : 'var(--text-secondary)',
-                        border: fieldErrors.has("weekDays") && !formWeekDays.includes(index)
-                          ? '1.5px solid rgb(239, 68, 68)'
-                          : '0.5px solid var(--border-primary)',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={labelStyle}>Time of day</label>
-                <select
-                  value={formPreferredHour}
-                  onChange={(e) => setFormPreferredHour(Number(e.target.value))}
-                  style={selectStyle}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>{formatHour(i)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Timezone</label>
-                <select
-                  value={formTimezone}
-                  onChange={(e) => setFormTimezone(e.target.value)}
-                  style={selectStyle}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
-                >
-                  {timezoneOptions.map((tz) => (
-                    <option key={tz.value} value={tz.value}>{tz.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-              {editingId ? (
-                <>
-                  <button
-                    onClick={handleUpdate}
-                    disabled={saving}
-                    style={{
-                      padding: '8px 12px',
-                      background: 'var(--accent)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.5 : 1,
-                      transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-                      minHeight: '44px'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!saving) e.currentTarget.style.background = 'var(--accent-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!saving) e.currentTarget.style.background = 'var(--accent)';
-                    }}
-                  >
-                    Update Schedule
-                  </button>
-                  <button
-                    onClick={handleCancelEdit}
-                    disabled={saving}
-                    style={{
-                      padding: '8px 12px',
-                      background: 'var(--bg-tertiary)',
-                      color: 'var(--text-primary)',
-                      border: '0.5px solid var(--border-primary)',
-                      borderRadius: '4px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.5 : 1,
-                      transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-                      minHeight: '44px'
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleCreate}
-                  disabled={saving}
-                  style={{
-                    padding: '8px 12px',
-                    background: 'var(--accent)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    opacity: saving ? 0.5 : 1,
-                    transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-                    minHeight: '44px'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!saving) e.currentTarget.style.background = 'var(--accent-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!saving) e.currentTarget.style.background = 'var(--accent)';
-                  }}
-                >
-                  Create Schedule
-                </button>
-              )}
-            </div>
-          </div>
+          {renderFormFields("create")}
         </div>
 
         <div style={{
@@ -1000,6 +1004,15 @@ export default function SchedulesPage() {
           {message}
         </div>
       )}
+
+      <Modal
+        isOpen={editingId !== null}
+        onClose={handleCancelEdit}
+        title="Edit Schedule"
+        maxWidth="600px"
+      >
+        {renderFormFields("edit")}
+      </Modal>
 
       <Modal
         isOpen={deleteTarget !== null}
