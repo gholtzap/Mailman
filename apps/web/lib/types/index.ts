@@ -25,9 +25,12 @@ export interface User {
   updatedAt: Date;
 }
 
+export type PaperSource = "arxiv" | "medrxiv";
+
 export interface Paper {
   _id?: ObjectId;
   arxivId: string;
+  source?: PaperSource;
   title: string;
   authors: string[];
   abstract: string;

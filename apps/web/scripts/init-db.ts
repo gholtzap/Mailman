@@ -22,7 +22,17 @@ async function initializeDatabase() {
     await papersCollection.createIndex({ arxivId: 1 }, { unique: true });
     await papersCollection.createIndex({ categories: 1 });
     await papersCollection.createIndex({ publishedDate: -1 });
+    await papersCollection.createIndex({ source: 1 });
     console.log("Created indexes for papers collection");
+
+    const papersWithoutSource = await papersCollection.countDocuments({ source: { $exists: false } });
+    if (papersWithoutSource > 0) {
+      const result = await papersCollection.updateMany(
+        { source: { $exists: false } },
+        { $set: { source: "arxiv" } }
+      );
+      console.log(`Migration: set source="arxiv" on ${result.modifiedCount} existing papers`);
+    }
 
     const processedPapersCollection = db.collection("processed_papers");
     await processedPapersCollection.createIndex({ userId: 1, paperId: 1 }, { unique: true });
