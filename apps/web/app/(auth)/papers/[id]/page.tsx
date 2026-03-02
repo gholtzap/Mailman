@@ -54,6 +54,9 @@ export default function PaperDetailPage() {
     const data = await res.json();
     setProcessedPaper(data.processedPaper);
     setPaper(data.paper);
+    if (!data.processedPaper?.humanizedContent) {
+      setActiveTab("technical");
+    }
     setLoading(false);
   };
 
@@ -192,9 +195,11 @@ export default function PaperDetailPage() {
             marginBottom: '24px'
           }}>
             <div className="flex gap-2 overflow-x-auto">
-              <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>
-                Summary (Humanized)
-              </TabButton>
+              {processedPaper.humanizedContent && (
+                <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>
+                  Summary (Humanized)
+                </TabButton>
+              )}
               <TabButton active={activeTab === "technical"} onClick={() => setActiveTab("technical")}>
                 Technical (Generated)
               </TabButton>

@@ -53,6 +53,9 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
       const data = await res.json();
       setProcessedPaper(data.processedPaper);
       setPaper(data.paper);
+      if (!data.processedPaper?.humanizedContent) {
+        setActiveTab("technical");
+      }
       setLoading(false);
     };
     fetchPaper();
@@ -209,7 +212,9 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
               {processedPaper.status === "completed" && (
                 <>
                   <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-primary)", marginBottom: "16px" }}>
-                    {(["summary", "technical", "abstract"] as const).map((tab) => {
+                    {(["summary", "technical", "abstract"] as const)
+                      .filter((tab) => tab !== "summary" || !!processedPaper.humanizedContent)
+                      .map((tab) => {
                       const labels = { summary: "Summary", technical: "Technical", abstract: "Abstract" };
                       const isActive = activeTab === tab;
                       return (
