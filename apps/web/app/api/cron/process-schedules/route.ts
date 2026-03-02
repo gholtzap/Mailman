@@ -26,6 +26,29 @@ export async function GET(request: Request) {
     const jobs = await getProcessingJobsCollection();
 
     const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const staleResult = await jobs.updateMany(
+      {
+        status: { $in: ["queued", "running"] },
+        updatedAt: { $lt: oneWeekAgo },
+      },
+      {
+        $set: { status: "failed", updatedAt: now },
+      }
+    );
+
+    const deleteResult = await jobs.deleteMany({
+      status: "failed",
+      updatedAt: { $lt: oneWeekAgo },
+    });
+
+    if (staleResult.modifiedCount > 0 || deleteResult.deletedCount > 0) {
+      log.info(
+        { staleFailed: staleResult.modifiedCount, deletedOld: deleteResult.deletedCount },
+        "Cleaned up stale jobs"
+      );
+    }
 
     const dueSchedules = await schedules
       .find({

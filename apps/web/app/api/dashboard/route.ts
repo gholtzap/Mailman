@@ -57,10 +57,12 @@ export async function GET() {
       .limit(5)
       .toArray();
 
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const activeJobs = await jobs
       .find({
         userId: user._id,
         status: { $in: ["queued", "running", "failed"] },
+        updatedAt: { $gte: oneWeekAgo },
       })
       .sort({ createdAt: -1 })
       .toArray();
