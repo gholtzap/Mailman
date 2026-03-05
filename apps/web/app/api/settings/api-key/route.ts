@@ -6,11 +6,16 @@ import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { apiKeySchema } from "@/lib/validation/schemas/settings";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const authResult = await getAuthenticatedUser();
   if (authResult.error) return authResult.error;
   const { user } = authResult;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "write");
+  if (rateLimited) return rateLimited;
+
   const log = createLogger({ route: "settings-api-key", userId: user.clerkId });
 
   const parsed = await parseRequestBody(request, apiKeySchema);
@@ -49,6 +54,10 @@ export async function DELETE() {
   const authResult = await getAuthenticatedUser();
   if (authResult.error) return authResult.error;
   const { user } = authResult;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "write");
+  if (rateLimited) return rateLimited;
+
   const log = createLogger({ route: "settings-api-key-delete", userId: user.clerkId });
 
   const users = await getUsersCollection();

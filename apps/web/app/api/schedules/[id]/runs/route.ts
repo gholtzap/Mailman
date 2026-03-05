@@ -3,6 +3,7 @@ import { getRecurringSchedulesCollection, getProcessingJobsCollection } from "@/
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   request: Request,
@@ -11,6 +12,9 @@ export async function GET(
   const result = await getAuthenticatedUser();
   if (result.error) return result.error;
   const { user } = result;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "read");
+  if (rateLimited) return rateLimited;
 
   const parsed = await parseRouteParams(params);
   if (parsed.error) return parsed.error;

@@ -5,6 +5,7 @@ import { createLogger } from "@/lib/logging";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { papersFetchSchema } from "@/lib/validation/schemas/papers";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { MEDRXIV_CATEGORY_BY_API_NAME } from "@/lib/medrxiv-categories";
 
 function extractArxivId(url: string): string | null {
@@ -148,6 +149,9 @@ export async function POST(request: Request) {
       log.warn("Unauthorized request");
       return apiError("Unauthorized", 401);
     }
+
+    const rateLimited = await checkRateLimit(userId, "write");
+    if (rateLimited) return rateLimited;
 
     const parsed = await parseRequestBody(request, papersFetchSchema);
     if (parsed.error) return parsed.error;

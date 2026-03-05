@@ -10,6 +10,7 @@ import {
 } from "@/lib/validation/schemas/schedules";
 import { computeNextRunAt } from "@/lib/scheduling/next-run";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { RecurringSchedule } from "@/lib/types";
 
 function findUniqueName(desired: string, existingNames: Set<string>): string {
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
     const result = await getAuthenticatedUser();
     if (result.error) return result.error;
     const { user } = result;
+
+    const rateLimited = await checkRateLimit(user.clerkId, "write");
+    if (rateLimited) return rateLimited;
 
     const parsed = await parseRequestBody(request, scheduleImportSchema);
     if (parsed.error) return parsed.error;

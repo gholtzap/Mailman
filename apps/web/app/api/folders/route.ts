@@ -5,11 +5,15 @@ import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { folderCreateSchema } from "@/lib/validation/schemas/folders";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   const result = await getAuthenticatedUser();
   if (result.error) return result.error;
   const { user } = result;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "read");
+  if (rateLimited) return rateLimited;
 
   const folders = await getFoldersCollection();
   const userFolders = await folders
@@ -26,6 +30,9 @@ export async function POST(request: Request) {
     const authResult = await getAuthenticatedUser();
     if (authResult.error) return authResult.error;
     const { user } = authResult;
+
+    const rateLimited = await checkRateLimit(user.clerkId, "write");
+    if (rateLimited) return rateLimited;
 
     const parsed = await parseRequestBody(request, folderCreateSchema);
     if (parsed.error) return parsed.error;

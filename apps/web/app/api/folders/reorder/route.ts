@@ -4,11 +4,15 @@ import { getFoldersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { folderReorderSchema } from "@/lib/validation/schemas/folders";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function PUT(request: Request) {
   const result = await getAuthenticatedUser();
   if (result.error) return result.error;
   const { user } = result;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "write");
+  if (rateLimited) return rateLimited;
 
   const parsed = await parseRequestBody(request, folderReorderSchema);
   if (parsed.error) return parsed.error;

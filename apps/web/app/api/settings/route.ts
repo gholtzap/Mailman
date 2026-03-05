@@ -4,12 +4,16 @@ import { getUsersCollection } from "@/lib/db/collections";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { settingsUpdateSchema } from "@/lib/validation/schemas/settings";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
     return apiError("Unauthorized", 401);
   }
+
+  const rateLimited = await checkRateLimit(userId, "read");
+  if (rateLimited) return rateLimited;
 
   const users = await getUsersCollection();
   let user = await users.findOne({ clerkId: userId });
@@ -58,6 +62,9 @@ export async function PUT(request: Request) {
   if (!userId) {
     return apiError("Unauthorized", 401);
   }
+
+  const rateLimited = await checkRateLimit(userId, "write");
+  if (rateLimited) return rateLimited;
 
   const parsed = await parseRequestBody(request, settingsUpdateSchema);
   if (parsed.error) return parsed.error;

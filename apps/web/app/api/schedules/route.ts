@@ -4,11 +4,15 @@ import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { scheduleCreateSchema, validateScheduleTiming } from "@/lib/validation/schemas/schedules";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
   const result = await getAuthenticatedUser();
   if (result.error) return result.error;
   const { user } = result;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "read");
+  if (rateLimited) return rateLimited;
 
   const { searchParams } = new URL(request.url);
   const limit = parseInt(searchParams.get("limit") || "50");
@@ -33,6 +37,9 @@ export async function POST(request: Request) {
     const result = await getAuthenticatedUser();
     if (result.error) return result.error;
     const { user } = result;
+
+    const rateLimited = await checkRateLimit(user.clerkId, "write");
+    if (rateLimited) return rateLimited;
 
     const parsed = await parseRequestBody(request, scheduleCreateSchema);
     if (parsed.error) return parsed.error;

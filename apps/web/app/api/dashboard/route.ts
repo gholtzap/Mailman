@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getUsersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   const { userId } = await auth();
@@ -15,6 +16,9 @@ export async function GET() {
       log.warn("Unauthorized request");
       return apiError("Unauthorized", 401);
     }
+
+    const rateLimited = await checkRateLimit(userId, "read");
+    if (rateLimited) return rateLimited;
 
     const users = await getUsersCollection();
     let user = await users.findOne({ clerkId: userId });

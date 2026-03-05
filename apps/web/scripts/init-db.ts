@@ -66,6 +66,14 @@ async function initializeDatabase() {
     await foldersCollection.createIndex({ userId: 1, order: 1 });
     console.log("Created indexes for folders collection");
 
+    const rateLimitsCollection = db.collection("rate_limits");
+    await rateLimitsCollection.createIndex({ key: 1 }, { unique: true });
+    await rateLimitsCollection.createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0 }
+    );
+    console.log("Created indexes for rate_limits collection");
+
     console.log("Database initialization complete");
   } catch (error) {
     console.error("Error initializing database:", error);

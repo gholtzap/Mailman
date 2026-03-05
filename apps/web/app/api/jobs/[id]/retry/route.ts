@@ -7,6 +7,7 @@ import { migrateApiKeyIfLegacy } from "@/lib/encryption";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 300;
 
@@ -21,6 +22,10 @@ export async function POST(
   const authResult = await getAuthenticatedUser();
   if (authResult.error) return authResult.error;
   const { user } = authResult;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "processing");
+  if (rateLimited) return rateLimited;
+
   const log = createLogger({ route: "retry-job", userId: user.clerkId });
 
   const parsed = await parseRouteParams(params);
