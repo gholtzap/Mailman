@@ -17,7 +17,7 @@ interface ProcessBatchScrapeParams {
   papersPerCategory: number;
   keywords?: string[];
   keywordMatchMode?: "any" | "all";
-  encryptedApiKey: { encryptedValue: string; iv: string; authTag: string } | null;
+  encryptedApiKey: { encryptedValue: string; iv: string; authTag: string; salt?: string } | null;
   skipAI?: boolean;
   notificationEmail?: string;
   scheduleName?: string;

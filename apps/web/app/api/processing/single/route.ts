@@ -4,6 +4,7 @@ import { getPapersCollection, getProcessedPapersCollection, getProcessingJobsCol
 import { getClient } from "@/lib/db/mongodb";
 import { createLogger } from "@/lib/logging";
 import { processSinglePaper } from "@/lib/processing/single";
+import { migrateApiKeyIfLegacy } from "@/lib/encryption";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { processingSingleSchema } from "@/lib/validation/schemas/processing";
@@ -126,12 +127,16 @@ export async function POST(request: Request) {
       await session.endSession();
     }
 
+    const encryptedApiKey = user.apiKey
+      ? await migrateApiKeyIfLegacy(user._id!, user.apiKey)
+      : null;
+
     after(async () => {
       await processSinglePaper({
         processedPaperId,
         jobId: jobId.toString(),
         arxivId: paper.arxivId,
-        encryptedApiKey: user.apiKey || null,
+        encryptedApiKey,
         skipAI: skipAI || false,
       });
     });

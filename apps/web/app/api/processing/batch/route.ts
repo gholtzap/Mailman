@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { getProcessingJobsCollection } from "@/lib/db/collections";
 import { processBatchScrape } from "@/lib/processing/batch";
+import { migrateApiKeyIfLegacy } from "@/lib/encryption";
 import { createLogger } from "@/lib/logging";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
@@ -75,6 +76,10 @@ export async function POST(request: Request) {
     });
     log.info({ jobId: job.insertedId }, "Job created and queued");
 
+    const encryptedApiKey = user.apiKey
+      ? await migrateApiKeyIfLegacy(user._id!, user.apiKey)
+      : null;
+
     after(() =>
       processBatchScrape({
         jobId: job.insertedId.toString(),
@@ -83,7 +88,7 @@ export async function POST(request: Request) {
         papersPerCategory: papersPerCategory || user.settings.papersPerCategory,
         keywords,
         keywordMatchMode,
-        encryptedApiKey: user.apiKey || null,
+        encryptedApiKey,
         skipAI,
         notificationEmail: user.email,
       })
