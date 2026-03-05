@@ -19,12 +19,7 @@ function formatHour(hour: number): string {
 }
 
 const TAB_CONTENT: Record<string, string[]> = {
-  humanized: [
-    "This paper tackles a real bottleneck in deploying large language models: inference is slow and expensive when every token has to pass through every parameter.",
-    "The authors propose a sparse MoE layer that routes each token to only 2 of 8 expert sub-networks, cutting compute by roughly 4x. The routing mechanism is learned end-to-end with no auxiliary balancing loss -- instead they use a soft capacity constraint that naturally distributes load across experts.",
-    "Results on MMLU, HellaSwag, and ARC-Challenge are within 0.3% of the dense baseline, while wall-clock inference time drops from 42ms to 11ms per token on A100 hardware.",
-  ],
-  technical: [
+  summary: [
     "The proposed architecture replaces dense FFN layers with a top-2 gated mixture of 8 expert networks, each with dimensionality d_model/4. Token-to-expert assignment is computed via a softmax-normalized linear gate W_g, with a differentiable load-balancing term added to the routing logits.",
     "Unlike Switch Transformer and GShard, this approach eliminates auxiliary balancing losses entirely. Instead, a soft capacity factor C=1.25 clips expert buffers, and overflow tokens are routed to a shared residual expert, ensuring no token is dropped during training or inference.",
     "Benchmarked against a parameter-matched dense baseline (6.7B params, 1.8B active), the model achieves 73.2% on MMLU (vs 73.5% dense), 82.1% on HellaSwag (vs 82.3%), and 61.4% on ARC-C (vs 61.2%), with 3.8x lower FLOPs per forward pass.",
@@ -36,7 +31,7 @@ const TAB_CONTENT: Record<string, string[]> = {
   ],
 };
 
-const TABS = ["Humanized", "Technical", "Abstract"] as const;
+const TABS = ["Summary", "Abstract"] as const;
 
 export default function HomepageDemo() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([
@@ -46,7 +41,7 @@ export default function HomepageDemo() {
   ]);
   const [selectedDays, setSelectedDays] = useState<number[]>(DEFAULT_DAYS);
   const [selectedHour, setSelectedHour] = useState(9);
-  const [activeTab, setActiveTab] = useState<string>("humanized");
+  const [activeTab, setActiveTab] = useState<string>("summary");
 
   function toggleCategory(id: string) {
     setSelectedCategories((prev) =>

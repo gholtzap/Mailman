@@ -61,7 +61,6 @@ export interface ProcessedPaper {
   skipAI?: boolean;
   status: "pending" | "processing" | "completed" | "failed";
   generatedContent?: string;
-  humanizedContent?: string;
   costs?: {
     opusInputTokens: number;
     opusOutputTokens: number;

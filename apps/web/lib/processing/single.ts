@@ -8,7 +8,7 @@ import {
 } from "@/lib/db/collections";
 import { decryptApiKey } from "@/lib/encryption";
 import { READ_PAPER_PROMPT } from "@/lib/prompts/read_paper";
-import { HUMANIZE_PROMPT } from "@/lib/prompts/humanize";
+
 import { createLogger } from "@/lib/logging";
 
 interface ProcessSinglePaperParams {
@@ -120,33 +120,11 @@ export async function processSinglePaper({
 
       const generatedText =
         opusResponse.content[0].type === "text" ? opusResponse.content[0].text : "";
-      const opusInputTokens = opusResponse.usage.input_tokens;
-      const opusOutputTokens = opusResponse.usage.output_tokens;
+      const inputTokens = opusResponse.usage.input_tokens;
+      const outputTokens = opusResponse.usage.output_tokens;
 
-      const humanizeInput = HUMANIZE_PROMPT.includes("{text}")
-        ? HUMANIZE_PROMPT.replace("{text}", generatedText)
-        : `${HUMANIZE_PROMPT}\n\n---\n\n${generatedText}`;
-
-      const sonnetResponse = await client.messages.create({
-        model: "claude-sonnet-4-5-20250929",
-        max_tokens: 16000,
-        messages: [
-          {
-            role: "user",
-            content: humanizeInput,
-          },
-        ],
-      });
-
-      const humanizedText =
-        sonnetResponse.content[0].type === "text" ? sonnetResponse.content[0].text : "";
-      const sonnetInputTokens = sonnetResponse.usage.input_tokens;
-      const sonnetOutputTokens = sonnetResponse.usage.output_tokens;
-
-      const opusCost =
-        (opusInputTokens / 1_000_000) * 15.0 + (opusOutputTokens / 1_000_000) * 75.0;
-      const sonnetCost =
-        (sonnetInputTokens / 1_000_000) * 3.0 + (sonnetOutputTokens / 1_000_000) * 15.0;
+      const estimatedCostUsd =
+        Math.round(((inputTokens / 1_000_000) * 15.0 + (outputTokens / 1_000_000) * 75.0) * 10000) / 10000;
 
       await processedPapers.updateOne(
         { _id: new ObjectId(processedPaperId) },
@@ -154,13 +132,12 @@ export async function processSinglePaper({
           $set: {
             status: "completed",
             generatedContent: generatedText,
-            humanizedContent: humanizedText,
             costs: {
-              opusInputTokens,
-              opusOutputTokens,
-              sonnetInputTokens,
-              sonnetOutputTokens,
-              estimatedCostUsd: Math.round((opusCost + sonnetCost) * 10000) / 10000,
+              opusInputTokens: inputTokens,
+              opusOutputTokens: outputTokens,
+              sonnetInputTokens: 0,
+              sonnetOutputTokens: 0,
+              estimatedCostUsd,
             },
             updatedAt: new Date(),
           },
@@ -175,7 +152,6 @@ export async function processSinglePaper({
           $set: {
             status: "completed",
             generatedContent: rawText,
-            humanizedContent: undefined,
             costs: {
               opusInputTokens: 0,
               opusOutputTokens: 0,

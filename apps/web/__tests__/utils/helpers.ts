@@ -97,9 +97,6 @@ This paper introduces a transformer-based architecture that achieves state-of-th
 - Novel attention mechanism with O(n log n) complexity
 - 20% improvement over previous SOTA
 - Reduced training time by 40%`,
-    humanizedContent: `This paper is about a new AI model that works better than previous ones.
-
-The main idea is using a smart way to look at data that makes it faster and more accurate. They tested it and it works 20% better than other models while taking less time to train.`,
     costs: {
       opusInputTokens: 8500,
       opusOutputTokens: 4200,

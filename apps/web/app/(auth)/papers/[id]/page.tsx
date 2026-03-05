@@ -13,7 +13,6 @@ interface ProcessedPaper {
   arxivId: string;
   status: string;
   generatedContent?: string;
-  humanizedContent?: string;
   costs?: {
     opusInputTokens: number;
     opusOutputTokens: number;
@@ -43,7 +42,7 @@ export default function PaperDetailPage() {
   const [processedPaper, setProcessedPaper] = useState<ProcessedPaper | null>(null);
   const [paper, setPaper] = useState<Paper | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"summary" | "technical" | "abstract">("summary");
+  const [activeTab, setActiveTab] = useState<"technical" | "abstract">("technical");
 
   useEffect(() => {
     fetchPaper();
@@ -54,9 +53,6 @@ export default function PaperDetailPage() {
     const data = await res.json();
     setProcessedPaper(data.processedPaper);
     setPaper(data.paper);
-    if (!data.processedPaper?.humanizedContent) {
-      setActiveTab("technical");
-    }
     setLoading(false);
   };
 
@@ -195,13 +191,8 @@ export default function PaperDetailPage() {
             marginBottom: '24px'
           }}>
             <div className="flex gap-2 overflow-x-auto">
-              {processedPaper.humanizedContent && (
-                <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>
-                  Summary (Humanized)
-                </TabButton>
-              )}
               <TabButton active={activeTab === "technical"} onClick={() => setActiveTab("technical")}>
-                Technical (Generated)
+                Summary
               </TabButton>
               <TabButton active={activeTab === "abstract"} onClick={() => setActiveTab("abstract")}>
                 Abstract
@@ -215,34 +206,6 @@ export default function PaperDetailPage() {
             borderRadius: '6px',
             padding: '20px'
           }}>
-            {activeTab === "summary" && (
-              <div className="markdown-content" style={{
-                fontFamily: 'var(--font-geist-sans)',
-                fontSize: '14px',
-                lineHeight: '1.7',
-                color: 'var(--text-primary)'
-              }}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    h1: ({node, ...props}) => <h1 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '16px', paddingBottom: '12px', borderBottom: '0.5px solid var(--border-primary)' }} {...props} />,
-                    h2: ({node, ...props}) => <h2 style={{ fontSize: '18px', fontWeight: 600, marginTop: '24px', marginBottom: '12px' }} {...props} />,
-                    h3: ({node, ...props}) => <h3 style={{ fontSize: '16px', fontWeight: 600, marginTop: '20px', marginBottom: '10px' }} {...props} />,
-                    p: ({node, ...props}) => <p style={{ marginBottom: '12px' }} {...props} />,
-                    ul: ({node, ...props}) => <ul style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
-                    ol: ({node, ...props}) => <ol style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
-                    li: ({node, ...props}) => <li style={{ margin: '6px 0' }} {...props} />,
-                    code: ({node, inline, ...props}: any) => inline
-                      ? <code style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '13px', background: 'var(--bg-tertiary)', border: '0.5px solid var(--border-primary)', padding: '2px 6px', borderRadius: '3px' }} {...props} />
-                      : <code style={{ fontFamily: 'var(--font-geist-mono)', fontSize: '13px' }} {...props} />,
-                    pre: ({node, ...props}) => <pre style={{ background: 'var(--bg-tertiary)', border: '0.5px solid var(--border-primary)', borderRadius: '6px', padding: '12px', marginBottom: '12px', overflowX: 'auto' }} {...props} />,
-                  }}
-                >
-                  {processedPaper.humanizedContent || ''}
-                </ReactMarkdown>
-              </div>
-            )}
-
             {activeTab === "technical" && (
               <div className="markdown-content" style={{
                 fontFamily: 'var(--font-geist-sans)',

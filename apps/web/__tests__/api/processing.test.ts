@@ -139,7 +139,6 @@ describe('/api/processing', () => {
         arxivId: paper.arxivId,
         status: 'completed',
         generatedContent: 'Test content',
-        humanizedContent: 'Test humanized',
         createdAt: new Date(),
         updatedAt: new Date(),
       })
