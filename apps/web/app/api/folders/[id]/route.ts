@@ -5,6 +5,7 @@ import { parseRequestBody } from "@/lib/validation/parse-request";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { folderUpdateSchema } from "@/lib/validation/schemas/folders";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
   _request: Request,
@@ -13,6 +14,9 @@ export async function GET(
   const result = await getAuthenticatedUser();
   if (result.error) return result.error;
   const { user } = result;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "read");
+  if (rateLimited) return rateLimited;
 
   const parsed = await parseRouteParams(params);
   if (parsed.error) return parsed.error;
@@ -33,6 +37,9 @@ export async function PUT(
   const authResult = await getAuthenticatedUser();
   if (authResult.error) return authResult.error;
   const { user } = authResult;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "write");
+  if (rateLimited) return rateLimited;
 
   const paramsParsed = await parseRouteParams(params);
   if (paramsParsed.error) return paramsParsed.error;
@@ -72,6 +79,9 @@ export async function DELETE(
   const result = await getAuthenticatedUser();
   if (result.error) return result.error;
   const { user } = result;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "write");
+  if (rateLimited) return rateLimited;
 
   const parsed = await parseRouteParams(params);
   if (parsed.error) return parsed.error;

@@ -6,6 +6,7 @@ import { parseRequestBody } from "@/lib/validation/parse-request";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { paperFolderSchema } from "@/lib/validation/schemas/papers";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function PUT(
   request: Request,
@@ -14,6 +15,9 @@ export async function PUT(
   const authResult = await getAuthenticatedUser();
   if (authResult.error) return authResult.error;
   const { user } = authResult;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "write");
+  if (rateLimited) return rateLimited;
 
   const paramsParsed = await parseRouteParams(params);
   if (paramsParsed.error) return paramsParsed.error;

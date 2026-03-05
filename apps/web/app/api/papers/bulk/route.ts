@@ -7,6 +7,7 @@ import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { papersBulkSchema } from "@/lib/validation/schemas/papers";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 300;
 
@@ -16,6 +17,9 @@ export async function POST(request: Request) {
   const result = await getAuthenticatedUser();
   if (result.error) return result.error;
   const { user } = result;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "write");
+  if (rateLimited) return rateLimited;
 
   const parsed = await parseRequestBody(request, papersBulkSchema);
   if (parsed.error) return parsed.error;

@@ -9,6 +9,7 @@ import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { processingSingleSchema } from "@/lib/validation/schemas/processing";
 import { apiError } from "@/lib/api/errors";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 300;
 
@@ -16,6 +17,10 @@ export async function POST(request: Request) {
   const authResult = await getAuthenticatedUser();
   if (authResult.error) return authResult.error;
   const { user } = authResult;
+
+  const rateLimited = await checkRateLimit(user.clerkId, "processing");
+  if (rateLimited) return rateLimited;
+
   const log = createLogger({ route: "single-processing", userId: user.clerkId });
 
   try {
