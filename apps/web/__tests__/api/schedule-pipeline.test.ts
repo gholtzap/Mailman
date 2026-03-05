@@ -73,7 +73,6 @@ describe('Schedule pipeline integration', () => {
           $set: {
             status: 'completed',
             generatedContent: 'Test generated content',
-            humanizedContent: 'Test humanized content',
             updatedAt: new Date(),
           },
         }
@@ -136,7 +135,7 @@ describe('Schedule pipeline integration', () => {
       status: 'completed',
     })
     expect(processedPaper).toBeDefined()
-    expect(processedPaper!.humanizedContent).toBe('Test humanized content')
+    expect(processedPaper!.generatedContent).toBe('Test generated content')
 
     expect(mockResendSend).toHaveBeenCalledWith(
       expect.objectContaining({

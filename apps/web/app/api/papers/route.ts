@@ -84,7 +84,6 @@ export async function GET(request: Request) {
       skipAI: 1,
       status: 1,
       generatedContent: 1,
-      humanizedContent: 1,
       costs: 1,
       error: 1,
       createdAt: 1,

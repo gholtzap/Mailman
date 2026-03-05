@@ -12,7 +12,6 @@ interface ProcessedPaper {
   arxivId: string;
   status: string;
   generatedContent?: string;
-  humanizedContent?: string;
   costs?: {
     opusInputTokens: number;
     opusOutputTokens: number;
@@ -43,19 +42,16 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
   const [processedPaper, setProcessedPaper] = useState<ProcessedPaper | null>(null);
   const [paper, setPaper] = useState<PaperMeta | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"summary" | "technical" | "abstract">("summary");
+  const [activeTab, setActiveTab] = useState<"technical" | "abstract">("technical");
 
   useEffect(() => {
     setLoading(true);
-    setActiveTab("summary");
+    setActiveTab("technical");
     const fetchPaper = async () => {
       const res = await fetch(`/api/papers/${paperId}`);
       const data = await res.json();
       setProcessedPaper(data.processedPaper);
       setPaper(data.paper);
-      if (!data.processedPaper?.humanizedContent) {
-        setActiveTab("technical");
-      }
       setLoading(false);
     };
     fetchPaper();
@@ -212,10 +208,8 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
               {processedPaper.status === "completed" && (
                 <>
                   <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-primary)", marginBottom: "16px" }}>
-                    {(["summary", "technical", "abstract"] as const)
-                      .filter((tab) => tab !== "summary" || !!processedPaper.humanizedContent)
-                      .map((tab) => {
-                      const labels = { summary: "Summary", technical: "Technical", abstract: "Abstract" };
+                    {(["technical", "abstract"] as const).map((tab) => {
+                      const labels = { technical: "Summary", abstract: "Abstract" };
                       const isActive = activeTab === tab;
                       return (
                         <button
@@ -263,7 +257,7 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
                           pre: ({node, ...props}: any) => <pre style={{ background: "var(--bg-tertiary)", border: "0.5px solid var(--border-primary)", borderRadius: "6px", padding: "10px", marginBottom: "10px", overflowX: "auto" }} {...props} />,
                         }}
                       >
-                        {activeTab === "summary" ? (processedPaper.humanizedContent || "") : (processedPaper.generatedContent || "")}
+                        {processedPaper.generatedContent || ""}
                       </ReactMarkdown>
                     )}
                   </div>
