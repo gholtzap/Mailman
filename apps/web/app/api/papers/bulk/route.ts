@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { ObjectId } from "mongodb";
 import { getProcessedPapersCollection, getPapersCollection, getFoldersCollection } from "@/lib/db/collections";
 import { processSinglePaper } from "@/lib/processing/single";
+import { migrateApiKeyIfLegacy } from "@/lib/encryption";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { papersBulkSchema } from "@/lib/validation/schemas/papers";
@@ -78,6 +79,10 @@ export async function POST(request: Request) {
       { $set: { status: "pending", updatedAt: new Date() }, $unset: { error: "" } },
     );
 
+    const encryptedApiKey = user.apiKey
+      ? await migrateApiKeyIfLegacy(user._id!, user.apiKey)
+      : null;
+
     after(async () => {
       for (const pp of papersToRetry) {
         const paperDoc = paperMap.get(pp.paperId.toString());
@@ -86,7 +91,7 @@ export async function POST(request: Request) {
           processedPaperId: pp._id!.toString(),
           jobId: "",
           arxivId: paperDoc.arxivId,
-          encryptedApiKey: user.apiKey || null,
+          encryptedApiKey,
           skipAI: pp.skipAI || false,
         });
       }

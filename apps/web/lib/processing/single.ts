@@ -15,7 +15,7 @@ interface ProcessSinglePaperParams {
   processedPaperId: string;
   jobId: string;
   arxivId: string;
-  encryptedApiKey: { encryptedValue: string; iv: string; authTag: string } | null;
+  encryptedApiKey: { encryptedValue: string; iv: string; authTag: string; salt?: string } | null;
   skipAI?: boolean;
 }
 

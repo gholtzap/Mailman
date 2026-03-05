@@ -1,4 +1,6 @@
-import CryptoJS from "crypto-js";
+import crypto from "crypto";
+import { ObjectId } from "mongodb";
+import { getUsersCollection } from "@/lib/db/collections";
 
 if (!process.env.API_KEY_ENCRYPTION_SECRET) {
   throw new Error("API_KEY_ENCRYPTION_SECRET must be set in environment");
@@ -10,55 +12,95 @@ export interface EncryptedData {
   encryptedValue: string;
   iv: string;
   authTag: string;
+  salt?: string;
 }
 
 export function encryptApiKey(apiKey: string): EncryptedData {
-  const iv = CryptoJS.lib.WordArray.random(16);
+  const salt = crypto.randomBytes(16);
+  const key = crypto.scryptSync(SECRET, salt, 32);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
 
-  const secretWordArray = CryptoJS.enc.Utf8.parse(SECRET);
-  const m1 = CryptoJS.MD5(secretWordArray);
-  const m1PlusSecret = CryptoJS.lib.WordArray.create()
-    .concat(m1)
-    .concat(secretWordArray);
-  const m2 = CryptoJS.MD5(m1PlusSecret);
-  const key = CryptoJS.lib.WordArray.create().concat(m1).concat(m2);
-
-  const encrypted = CryptoJS.AES.encrypt(apiKey, key, {
-    iv: iv,
-    mode: CryptoJS.mode.CBC,
-    padding: CryptoJS.pad.Pkcs7,
-  });
+  const encrypted = Buffer.concat([
+    cipher.update(apiKey, "utf8"),
+    cipher.final(),
+  ]);
 
   return {
-    encryptedValue: encrypted.ciphertext.toString(CryptoJS.enc.Base64),
-    iv: iv.toString(CryptoJS.enc.Base64),
-    authTag: "",
+    encryptedValue: encrypted.toString("base64"),
+    iv: iv.toString("base64"),
+    authTag: cipher.getAuthTag().toString("base64"),
+    salt: salt.toString("base64"),
   };
 }
 
+function legacyDeriveKey(secret: string): { key: Buffer; } {
+  const secretBytes = Buffer.from(secret, "utf8");
+  const m1 = crypto.createHash("md5").update(secretBytes).digest();
+  const m2 = crypto.createHash("md5").update(Buffer.concat([m1, secretBytes])).digest();
+  return { key: Buffer.concat([m1, m2]) };
+}
+
 export function decryptApiKey(encryptedData: EncryptedData): string {
-  const iv = CryptoJS.enc.Base64.parse(encryptedData.iv);
-  const ciphertext = CryptoJS.enc.Base64.parse(encryptedData.encryptedValue);
+  if (!encryptedData.authTag) {
+    const { key } = legacyDeriveKey(SECRET);
+    const iv = Buffer.from(encryptedData.iv, "base64");
+    const ciphertext = Buffer.from(encryptedData.encryptedValue, "base64");
+    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
+    const decrypted = Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final(),
+    ]);
+    return decrypted.toString("utf8");
+  }
 
-  const secretWordArray = CryptoJS.enc.Utf8.parse(SECRET);
-  const m1 = CryptoJS.MD5(secretWordArray);
-  const m1PlusSecret = CryptoJS.lib.WordArray.create()
-    .concat(m1)
-    .concat(secretWordArray);
-  const m2 = CryptoJS.MD5(m1PlusSecret);
-  const key = CryptoJS.lib.WordArray.create().concat(m1).concat(m2);
+  const salt = Buffer.from(encryptedData.salt!, "base64");
+  const key = crypto.scryptSync(SECRET, salt, 32);
+  const iv = Buffer.from(encryptedData.iv, "base64");
+  const authTag = Buffer.from(encryptedData.authTag, "base64");
+  const ciphertext = Buffer.from(encryptedData.encryptedValue, "base64");
 
-  const decrypted = CryptoJS.AES.decrypt(
-    { ciphertext: ciphertext } as any,
-    key,
-    {
-      iv: iv,
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7,
-    }
-  );
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(authTag);
 
-  return decrypted.toString(CryptoJS.enc.Utf8);
+  const decrypted = Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final(),
+  ]);
+
+  return decrypted.toString("utf8");
+}
+
+export async function migrateApiKeyIfLegacy(
+  userId: ObjectId,
+  encryptedData: EncryptedData
+): Promise<EncryptedData> {
+  if (encryptedData.authTag) {
+    return encryptedData;
+  }
+
+  const plaintext = decryptApiKey(encryptedData);
+  const newEncrypted = encryptApiKey(plaintext);
+
+  const users = await getUsersCollection();
+  users
+    .updateOne(
+      { _id: userId },
+      {
+        $set: {
+          "apiKey.encryptedValue": newEncrypted.encryptedValue,
+          "apiKey.iv": newEncrypted.iv,
+          "apiKey.authTag": newEncrypted.authTag,
+          "apiKey.salt": newEncrypted.salt,
+          updatedAt: new Date(),
+        },
+      }
+    )
+    .catch((err) => {
+      console.error("Failed to migrate legacy API key:", err);
+    });
+
+  return newEncrypted;
 }
 
 export async function validateAnthropicApiKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {

@@ -15,6 +15,7 @@ export interface User {
     encryptedValue: string;
     iv: string;
     authTag: string;
+    salt?: string;
     isValid: boolean;
   };
   usage: {

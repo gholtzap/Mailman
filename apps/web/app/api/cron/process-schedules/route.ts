@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { getRecurringSchedulesCollection, getProcessingJobsCollection, getUsersCollection } from "@/lib/db/collections";
 import { processBatchScrape } from "@/lib/processing/batch";
+import { migrateApiKeyIfLegacy } from "@/lib/encryption";
 import { computeNextRunAt } from "@/lib/scheduling/next-run";
 import { createLogger } from "@/lib/logging";
 import { apiError } from "@/lib/api/errors";
@@ -101,6 +102,10 @@ export async function GET(request: Request) {
 
         scheduleLog.info({ jobId: job.insertedId }, "Created job for schedule");
 
+        const encryptedApiKey = user.apiKey
+          ? await migrateApiKeyIfLegacy(user._id!, user.apiKey)
+          : null;
+
         after(() =>
           processBatchScrape({
             jobId: job.insertedId.toString(),
@@ -109,7 +114,7 @@ export async function GET(request: Request) {
             papersPerCategory: schedule.papersPerCategory,
             keywords: schedule.keywords,
             keywordMatchMode: schedule.keywordMatchMode,
-            encryptedApiKey: user.apiKey || null,
+            encryptedApiKey,
             notificationEmail: schedule.email || user.email,
             scheduleName: schedule.name,
           })

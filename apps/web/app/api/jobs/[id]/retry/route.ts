@@ -3,6 +3,7 @@ import { getPapersCollection, getProcessedPapersCollection, getProcessingJobsCol
 import { createLogger } from "@/lib/logging";
 import { processSinglePaper } from "@/lib/processing/single";
 import { processBatchScrape } from "@/lib/processing/batch";
+import { migrateApiKeyIfLegacy } from "@/lib/encryption";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { apiError } from "@/lib/api/errors";
@@ -105,12 +106,16 @@ export async function POST(
         { $set: { progress: { total: 1, completed: 0 } } }
       );
 
+      const encryptedApiKey = user.apiKey
+        ? await migrateApiKeyIfLegacy(user._id!, user.apiKey)
+        : null;
+
       after(async () => {
         await processSinglePaper({
           processedPaperId: processedPaper._id!.toString(),
           jobId: parsed.id.toString(),
           arxivId: paper.arxivId,
-          encryptedApiKey: user.apiKey || null,
+          encryptedApiKey,
           skipAI: job.input.skipAI ?? false,
         });
       });
@@ -133,6 +138,10 @@ export async function POST(
         { $set: { progress: { total: categories.length * papersPerCategory, completed: 0 } } }
       );
 
+      const encryptedApiKeyBatch = user.apiKey
+        ? await migrateApiKeyIfLegacy(user._id!, user.apiKey)
+        : null;
+
       after(() =>
         processBatchScrape({
           jobId: parsed.id.toString(),
@@ -141,7 +150,7 @@ export async function POST(
           papersPerCategory,
           keywords: job.input.keywords,
           keywordMatchMode: job.input.keywordMatchMode,
-          encryptedApiKey: user.apiKey || null,
+          encryptedApiKey: encryptedApiKeyBatch,
           skipAI: job.input.skipAI,
         })
       );
