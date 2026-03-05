@@ -25,6 +25,30 @@ export const scheduleCreateSchema = z.object({
   timezone: z.string().optional(),
 });
 
+export const scheduleExportItemSchema = z.object({
+  name: z.string().min(1),
+  categories: z.array(z.string()).min(1),
+  papersPerCategory: z.number().min(1),
+  intervalDays: z.number().optional(),
+  email: z
+    .string()
+    .refine((val) => !val || emailRegex.test(val), "Invalid email format")
+    .optional(),
+  keywords: z.array(z.string()).optional(),
+  keywordMatchMode: z.enum(["any", "all"]).optional(),
+  scheduleType: z.enum(["interval", "weekly"]).optional(),
+  weekDays: z.array(z.number()).optional(),
+  preferredHour: z.number().optional(),
+  timezone: z.string().optional(),
+  status: z.enum(["active", "paused"]).optional(),
+});
+
+export const scheduleImportSchema = z.object({
+  version: z.number(),
+  exportedAt: z.string(),
+  schedules: z.array(scheduleExportItemSchema).min(1, "No schedules to import"),
+});
+
 export const scheduleUpdateSchema = z.object({
   name: z.string().optional(),
   categories: z.array(z.string()).optional(),

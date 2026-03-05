@@ -110,6 +110,9 @@ export default function SchedulesPage() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formName, setFormName] = useState("");
   const [formCategories, setFormCategories] = useState<string[]>([]);
@@ -279,6 +282,104 @@ export default function SchedulesPage() {
   const handleCancelEdit = () => {
     setEditingId(null);
     resetForm();
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === schedules.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(schedules.map((s) => s._id!.toString())));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleExport = async () => {
+    try {
+      const exportUrl = selectedIds.size > 0
+        ? `/api/schedules/export?ids=${Array.from(selectedIds).join(",")}`
+        : "/api/schedules/export";
+      const res = await fetch(exportUrl);
+      if (!res.ok) {
+        const error = await res.json();
+        setMessage(error.error || "Failed to export schedules");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const filenameMatch = disposition.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : "schedules-export.json";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      const count = selectedIds.size || schedules.length;
+      setMessage(`Exported ${count} schedule${count === 1 ? "" : "s"}`);
+      setSelectedIds(new Set());
+    } catch {
+      setMessage("Failed to export schedules");
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    setImporting(true);
+    setMessage("");
+
+    try {
+      const text = await file.text();
+      let payload: unknown;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        setMessage("Invalid JSON file");
+        setImporting(false);
+        return;
+      }
+
+      const res = await fetch("/api/schedules/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMessage(data.error || "Failed to import schedules");
+      } else {
+        let msg = `Imported ${data.imported} schedule${data.imported === 1 ? "" : "s"}`;
+        if (data.renamed && data.renamed.length > 0) {
+          const renameList = data.renamed
+            .map((r: { original: string; renamed: string }) => `"${r.original}" -> "${r.renamed}"`)
+            .join(", ");
+          msg += ` (renamed: ${renameList})`;
+        }
+        setMessage(msg);
+        await fetchSchedules();
+      }
+    } catch {
+      setMessage("Failed to import schedules");
+    } finally {
+      setImporting(false);
+    }
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -797,9 +898,66 @@ export default function SchedulesPage() {
           borderRadius: '6px',
           padding: '16px'
         }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-            Your Schedules
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Your Schedules
+            </h2>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleExport}
+                disabled={schedules.length === 0}
+                style={{
+                  padding: '4px 12px',
+                  background: 'var(--bg-tertiary)',
+                  color: schedules.length === 0 ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                  border: '0.5px solid var(--border-primary)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: schedules.length === 0 ? 'not-allowed' : 'pointer',
+                  transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                }}
+                onMouseEnter={(e) => {
+                  if (schedules.length > 0) e.currentTarget.style.background = 'var(--bg-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  if (schedules.length > 0) e.currentTarget.style.background = 'var(--bg-tertiary)';
+                }}
+              >
+                {selectedIds.size > 0 ? `Export (${selectedIds.size})` : "Export All"}
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                style={{
+                  padding: '4px 12px',
+                  background: 'var(--bg-tertiary)',
+                  color: importing ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                  border: '0.5px solid var(--border-primary)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: importing ? 'not-allowed' : 'pointer',
+                  transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!importing) e.currentTarget.style.background = 'var(--bg-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!importing) e.currentTarget.style.background = 'var(--bg-tertiary)';
+                }}
+              >
+                {importing ? "Importing..." : "Import"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportFile}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </div>
 
           {schedules.length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
@@ -810,6 +968,14 @@ export default function SchedulesPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ borderBottom: '0.5px solid var(--border-primary)' }}>
+                    <th style={{ padding: '8px', width: '32px' }}>
+                      <input
+                        type="checkbox"
+                        checked={schedules.length > 0 && selectedIds.size === schedules.length}
+                        onChange={toggleSelectAll}
+                        style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: 'var(--accent)' }}
+                      />
+                    </th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Name</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Categories</th>
                     <th style={{ textAlign: 'left', padding: '8px', color: 'var(--text-secondary)', fontWeight: 500 }}>Email</th>
@@ -825,6 +991,14 @@ export default function SchedulesPage() {
                   {schedules.map((schedule) => (
                     <React.Fragment key={schedule._id!.toString()}>
                     <tr style={{ borderBottom: '0.5px solid var(--border-primary)' }}>
+                      <td style={{ padding: '12px 8px' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(schedule._id!.toString())}
+                          onChange={() => toggleSelectOne(schedule._id!.toString())}
+                          style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: 'var(--accent)' }}
+                        />
+                      </td>
                       <td style={{ padding: '12px 8px', color: 'var(--text-primary)' }}>{schedule.name}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--text-secondary)', fontFamily: 'var(--font-geist-mono)', fontSize: '12px' }}>
                         {schedule.categories.join(", ")}
@@ -944,7 +1118,7 @@ export default function SchedulesPage() {
                     </tr>
                     {expandedScheduleId === schedule._id!.toString() && (
                       <tr>
-                        <td colSpan={9} style={{ padding: '0 8px 12px 8px', background: 'var(--bg-primary)' }}>
+                        <td colSpan={10} style={{ padding: '0 8px 12px 8px', background: 'var(--bg-primary)' }}>
                           {runsLoading ? (
                             <div style={{ padding: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                               Loading run history...
