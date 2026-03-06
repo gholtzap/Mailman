@@ -1,4 +1,4 @@
-import { Collection } from "mongodb";
+import { Collection, ObjectId } from "mongodb";
 import { getDatabase } from "./mongodb";
 import { User, Paper, ProcessedPaper, ProcessingJob, RecurringSchedule, Folder } from "../types";
 
@@ -30,4 +30,9 @@ export async function getRecurringSchedulesCollection(): Promise<Collection<Recu
 export async function getFoldersCollection(): Promise<Collection<Folder>> {
   const db = await getDatabase();
   return db.collection<Folder>("folders");
+}
+
+export async function getCountersCollection(): Promise<Collection<{ userId: ObjectId; scope: string; seq: number }>> {
+  const db = await getDatabase();
+  return db.collection("counters");
 }

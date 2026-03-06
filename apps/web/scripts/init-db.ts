@@ -67,6 +67,10 @@ async function initializeDatabase() {
     await foldersCollection.createIndex({ userId: 1, order: 1 });
     console.log("Created indexes for folders collection");
 
+    const countersCollection = db.collection("counters");
+    await countersCollection.createIndex({ userId: 1, scope: 1 }, { unique: true });
+    console.log("Created indexes for counters collection");
+
     const rateLimitsCollection = db.collection("rate_limits");
     await rateLimitsCollection.createIndex({ key: 1 }, { unique: true });
     await rateLimitsCollection.createIndex(

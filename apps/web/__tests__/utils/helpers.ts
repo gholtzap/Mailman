@@ -167,8 +167,9 @@ export async function createTestSchedule(client: MongoClient, userId: string, ov
 
 export async function createTestFolder(client: MongoClient, userId: string | MongoObjectId, overrides: any = {}) {
   const db = client.db('paper-reader')
+  const userOid = toObjectId(userId)
   const folder = {
-    userId: toObjectId(userId),
+    userId: userOid,
     name: 'Test Folder',
     color: '#6366f1',
     order: 0,
@@ -178,6 +179,13 @@ export async function createTestFolder(client: MongoClient, userId: string | Mon
   }
 
   const result = await db.collection('folders').insertOne(folder)
+
+  await db.collection('counters').updateOne(
+    { userId: userOid, scope: 'folder_order' },
+    { $inc: { seq: 1 } },
+    { upsert: true }
+  )
+
   return { ...folder, _id: result.insertedId }
 }
 

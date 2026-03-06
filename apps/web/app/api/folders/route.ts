@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getFoldersCollection } from "@/lib/db/collections";
+import { getFoldersCollection, getCountersCollection } from "@/lib/db/collections";
 import { FOLDER_COLORS, DEFAULT_FOLDER_COLOR } from "@/lib/constants/folder-colors";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
@@ -41,13 +41,14 @@ export async function POST(request: Request) {
     const resolvedColor = color && FOLDER_COLORS.includes(color) ? color : DEFAULT_FOLDER_COLOR;
 
     const folders = await getFoldersCollection();
+    const counters = await getCountersCollection();
 
-    const maxOrderResult = await folders
-      .find({ userId: user._id })
-      .sort({ order: -1 })
-      .limit(1)
-      .toArray();
-    const nextOrder = maxOrderResult.length > 0 ? maxOrderResult[0].order + 1 : 0;
+    const counter = await counters.findOneAndUpdate(
+      { userId: user._id!, scope: "folder_order" },
+      { $inc: { seq: 1 } },
+      { upsert: true, returnDocument: "before" }
+    );
+    const nextOrder = counter ? counter.seq : 0;
 
     const now = new Date();
     const result = await folders.insertOne({

@@ -76,6 +76,12 @@ async function createIndexes() {
   } catch (err: any) {
     if (err.code !== 85 && err.code !== 11000) throw err
   }
+
+  try {
+    await db.collection('counters').createIndex({ userId: 1, scope: 1 }, { unique: true })
+  } catch (err: any) {
+    if (err.code !== 85 && err.code !== 11000) throw err
+  }
 }
 
 export function getTestDb() {
