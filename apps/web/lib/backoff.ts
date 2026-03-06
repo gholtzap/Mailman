@@ -12,7 +12,7 @@ export interface RetryOptions {
 function computeBackoff(
   attempt: number,
   retryAfterHeader: string | null,
-  { baseDelayMs = 3000, maxDelayMs = 30000, jitterFraction = 0.25 }: RetryOptions
+  { baseDelayMs = 3500, maxDelayMs = 30000, jitterFraction = 0.25 }: RetryOptions
 ): number {
   let base: number;
 

@@ -67,7 +67,7 @@ async function fetchArxivPapers(
       headers: { "User-Agent": "PaperReader/1.0 (research-paper-aggregator)" },
       signal: AbortSignal.timeout(30_000),
     },
-    { maxRetries: 3, baseDelayMs: 3000 }
+    { maxRetries: 3 }
   );
 
   if (!response.ok) {
