@@ -14,6 +14,10 @@ export async function checkRateLimit(
   userId: string,
   tier: RateLimitTier
 ): Promise<NextResponse | null> {
+  if (process.env.NODE_ENV === "development") {
+    return null;
+  }
+
   const { maxRequests, windowMs } = TIERS[tier];
   const windowStart = Math.floor(Date.now() / windowMs);
   const key = `${userId}:${tier}:${windowStart}`;
