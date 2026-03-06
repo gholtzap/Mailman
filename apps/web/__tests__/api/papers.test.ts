@@ -178,7 +178,7 @@ describe('/api/papers', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('Invalid arXiv URL')
+      expect(data.error).toBe('Invalid arXiv or medrxiv URL')
     })
 
     it('should return existing paper if already in database', async () => {

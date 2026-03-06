@@ -7,7 +7,7 @@ import { setMockUserId, resetAuthMocks } from '../../__mocks__/@clerk/nextjs/ser
 import { __setMockClient, __resetMockClient } from '../../__mocks__/lib/db/mongodb'
 
 jest.mock('@clerk/nextjs/server')
-jest.mock('@/lib/db/mongodb', () => import('../../__mocks__/lib/db/mongodb'))
+jest.mock('@/lib/db/mongodb', () => require('../../__mocks__/lib/db/mongodb'))
 
 const mockProcessSinglePaper = jest.fn().mockResolvedValue(undefined)
 jest.mock('@/lib/processing/single', () => ({
