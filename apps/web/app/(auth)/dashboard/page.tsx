@@ -218,9 +218,8 @@ export default function DashboardPage() {
             </svg>
           </a>
           {[
-            { href: '/batch', label: '+Batch' },
+            { href: '/papers', label: '+Paper' },
             { href: '/schedules', label: '+Schedule' },
-            { href: '/papers/new', label: '+Paper' },
           ].map(({ href, label }) => (
             <Link key={href} href={href} style={{
               display: 'inline-flex',

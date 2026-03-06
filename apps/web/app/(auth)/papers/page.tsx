@@ -1,9 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, type FormEvent } from "react";
 import { DndContext, closestCenter, pointerWithin, DragOverlay, CollisionDetection, DragStartEvent, DragEndEvent, PointerSensor, useSensors, useSensor } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { ARXIV_CATEGORIES, POPULAR_CATEGORY_IDS } from "@/lib/arxiv-categories";
+import { MEDRXIV_CATEGORIES } from "@/lib/medrxiv-categories";
+import Modal from "@/app/components/Modal";
+
+const POPULAR_CATEGORIES = ARXIV_CATEGORIES.flatMap(section =>
+  section.categories.filter(cat => POPULAR_CATEGORY_IDS.has(cat.id))
+);
+
+const ALL_CATEGORY_SECTIONS = [
+  ...ARXIV_CATEGORIES,
+  { section: "Medicine (medRxiv)", categories: MEDRXIV_CATEGORIES.map(c => ({ id: c.id, name: c.name })) },
+];
 
 const customCollisionDetection: CollisionDetection = (args) => {
   const pointerIntersections = pointerWithin(args);
@@ -79,6 +91,22 @@ export default function PapersPage() {
   const [groupByCategory, setGroupByCategory] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const lastSelectedIndex = useRef<number | null>(null);
+
+  // New Paper modal
+  const [showNewPaperModal, setShowNewPaperModal] = useState(false);
+  const [arxivUrl, setArxivUrl] = useState("");
+  const [newPaperSkipAI, setNewPaperSkipAI] = useState(false);
+  const [newPaperLoading, setNewPaperLoading] = useState(false);
+  const [newPaperMessage, setNewPaperMessage] = useState("");
+
+  // Batch Process modal
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchCategories, setBatchCategories] = useState<string[]>([]);
+  const [batchPapersPerCategory, setBatchPapersPerCategory] = useState(5);
+  const [batchSkipAI, setBatchSkipAI] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchMessage, setBatchMessage] = useState("");
+  const [batchCategoryFilter, setBatchCategoryFilter] = useState("");
 
   useEffect(() => {
     setViewMode(getStoredViewMode());
@@ -255,6 +283,99 @@ export default function PapersPage() {
     });
     setSelectedIds(new Set());
     await fetchPapers();
+  };
+
+  const handleNewPaperSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setNewPaperLoading(true);
+    setNewPaperMessage("");
+    try {
+      const res = await fetch("/api/papers/fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ arxivUrl }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const processRes = await fetch("/api/processing/single", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paperId: data.paper._id, skipAI: newPaperSkipAI }),
+        });
+        if (processRes.ok) {
+          setShowNewPaperModal(false);
+          setArxivUrl("");
+          setNewPaperSkipAI(false);
+          setNewPaperMessage("");
+          await fetchPapers();
+        } else {
+          const processError = await processRes.json();
+          setNewPaperMessage(`Failed to queue processing: ${processError.details || processError.error || "Unknown error"}`);
+        }
+      } else {
+        const error = await res.json();
+        setNewPaperMessage(error.error || "Failed to fetch paper");
+      }
+    } catch (error) {
+      setNewPaperMessage(`An error occurred: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setNewPaperLoading(false);
+    }
+  };
+
+  const toggleBatchCategory = (id: string) => {
+    setBatchCategories((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
+
+  const filteredBatchCategories = useMemo(() =>
+    ALL_CATEGORY_SECTIONS.map(section => ({
+      ...section,
+      categories: section.categories.filter(cat => {
+        if (!batchCategoryFilter) return true;
+        const f = batchCategoryFilter.toLowerCase();
+        return cat.id.toLowerCase().includes(f) || cat.name.toLowerCase().includes(f);
+      })
+    })).filter(section => section.categories.length > 0),
+    [batchCategoryFilter]
+  );
+
+  const handleBatchSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (batchCategories.length === 0) {
+      setBatchMessage("Please select at least one category");
+      return;
+    }
+    setBatchLoading(true);
+    setBatchMessage("");
+    try {
+      const res = await fetch("/api/processing/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categories: batchCategories,
+          papersPerCategory: batchPapersPerCategory,
+          skipAI: batchSkipAI,
+        }),
+      });
+      if (res.ok) {
+        setShowBatchModal(false);
+        setBatchCategories([]);
+        setBatchPapersPerCategory(5);
+        setBatchSkipAI(false);
+        setBatchMessage("");
+        setBatchCategoryFilter("");
+        await fetchPapers();
+      } else {
+        const error = await res.json();
+        setBatchMessage(`Failed to start batch processing: ${error.details || error.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      setBatchMessage(`An error occurred: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBatchLoading(false);
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -443,6 +564,8 @@ export default function PapersPage() {
               onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
               groupByCategory={groupByCategory}
               onGroupByCategoryChange={setGroupByCategory}
+              onAddPaper={() => { setArxivUrl(""); setNewPaperSkipAI(false); setNewPaperMessage(""); setShowNewPaperModal(true); }}
+              onBatchProcess={() => { setBatchCategories([]); setBatchPapersPerCategory(5); setBatchSkipAI(false); setBatchMessage(""); setBatchCategoryFilter(""); setShowBatchModal(true); }}
             />
 
             {papers.length === 0 ? (
@@ -533,6 +656,285 @@ export default function PapersPage() {
           />
         );
       })()}
+
+      <Modal isOpen={showNewPaperModal} onClose={() => setShowNewPaperModal(false)} title="Add New Paper">
+        <form onSubmit={handleNewPaperSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--text-secondary)", marginBottom: "6px" }}>
+              arXiv or medRxiv URL
+            </label>
+            <input
+              type="text"
+              value={arxivUrl}
+              onChange={(e) => setArxivUrl(e.target.value)}
+              placeholder="arxiv.org/abs/2401.12345 or medrxiv.org/content/10.1101/..."
+              required
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                background: "var(--bg-primary)",
+                border: "0.5px solid var(--border-primary)",
+                borderRadius: "6px",
+                color: "var(--text-primary)",
+                fontSize: "13px",
+                outline: "none",
+                fontFamily: "var(--font-geist-mono)",
+                boxSizing: "border-box",
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-primary)")}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <input
+              type="checkbox"
+              id="newPaperSkipAI"
+              checked={newPaperSkipAI}
+              onChange={(e) => setNewPaperSkipAI(e.target.checked)}
+              style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--accent)" }}
+            />
+            <label htmlFor="newPaperSkipAI" style={{ fontSize: "13px", color: "var(--text-secondary)", cursor: "pointer" }}>
+              Skip AI processing (extract raw text only, no cost)
+            </label>
+          </div>
+          <button
+            type="submit"
+            disabled={newPaperLoading || !arxivUrl}
+            style={{
+              width: "100%",
+              padding: "10px 16px",
+              background: "var(--accent)",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: newPaperLoading || !arxivUrl ? "not-allowed" : "pointer",
+              opacity: newPaperLoading || !arxivUrl ? 0.5 : 1,
+              transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
+            }}
+          >
+            {newPaperLoading ? "Processing..." : "Fetch and Process Paper"}
+          </button>
+          {newPaperMessage && (
+            <div style={{
+              padding: "12px",
+              background: "var(--error-muted)",
+              border: "0.5px solid var(--error)",
+              borderRadius: "6px",
+              fontSize: "13px",
+              color: "var(--error)",
+            }}>
+              {newPaperMessage}
+            </div>
+          )}
+        </form>
+      </Modal>
+
+      <Modal isOpen={showBatchModal} onClose={() => setShowBatchModal(false)} title="Batch Process Papers" maxWidth="640px">
+        <form onSubmit={handleBatchSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--text-secondary)", marginBottom: "12px" }}>
+              Select Categories ({batchCategories.length} selected)
+            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+              {POPULAR_CATEGORIES.map((category) => {
+                const isSelected = batchCategories.includes(category.id);
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => toggleBatchCategory(category.id)}
+                    style={{
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: `0.5px solid ${isSelected ? "var(--accent)" : "var(--border-primary)"}`,
+                      background: isSelected ? "var(--accent-muted)" : "var(--bg-primary)",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
+                    }}
+                  >
+                    <div style={{ fontSize: "13px", fontWeight: 500, color: isSelected ? "var(--accent)" : "var(--text-primary)", marginBottom: "2px" }}>
+                      {category.name}
+                    </div>
+                    <div style={{ fontSize: "11px", fontFamily: "var(--font-geist-mono)", color: "var(--text-muted)" }}>
+                      {category.id}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <input
+              type="text"
+              value={batchCategoryFilter}
+              onChange={(e) => setBatchCategoryFilter(e.target.value)}
+              placeholder="Search all categories..."
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                background: "var(--bg-primary)",
+                border: "0.5px solid var(--border-primary)",
+                borderRadius: "6px",
+                color: "var(--text-primary)",
+                fontSize: "13px",
+                marginTop: "12px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-primary)")}
+            />
+            <div style={{
+              maxHeight: "200px",
+              overflowY: "auto",
+              marginTop: "8px",
+              padding: "12px",
+              background: "var(--bg-primary)",
+              border: "0.5px solid var(--border-primary)",
+              borderRadius: "6px",
+            }}>
+              {filteredBatchCategories.length === 0 ? (
+                <div style={{ padding: "20px", textAlign: "center", color: "var(--text-secondary)", fontSize: "13px" }}>
+                  No categories match your search
+                </div>
+              ) : (
+                filteredBatchCategories.map(section => (
+                  <div key={section.section} style={{ marginBottom: "16px" }}>
+                    <div style={{
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: "var(--text-secondary)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      marginBottom: "8px",
+                      paddingBottom: "4px",
+                      borderBottom: "0.5px solid var(--border-primary)",
+                    }}>
+                      {section.section}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                      {section.categories.map(category => (
+                        <label
+                          key={category.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "6px",
+                            cursor: "pointer",
+                            borderRadius: "4px",
+                            transition: "background 150ms",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-tertiary)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={batchCategories.includes(category.id)}
+                            onChange={() => toggleBatchCategory(category.id)}
+                            style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--accent)", flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: "12px", color: "var(--text-primary)", fontFamily: "var(--font-geist-mono)" }}>
+                              {category.id}
+                            </span>
+                            <span style={{ fontSize: "12px", color: "var(--text-secondary)", marginLeft: "8px" }}>
+                              {category.name}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--text-secondary)", marginBottom: "6px" }}>
+              Papers Per Category
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={batchPapersPerCategory || ""}
+              onChange={(e) => {
+                const parsed = parseInt(e.target.value, 10);
+                setBatchPapersPerCategory(isNaN(parsed) ? 0 : Math.min(parsed, 20));
+              }}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                background: "var(--bg-primary)",
+                border: "0.5px solid var(--border-primary)",
+                borderRadius: "6px",
+                color: "var(--text-primary)",
+                fontSize: "13px",
+                fontFamily: "var(--font-geist-mono)",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+              placeholder="5"
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "var(--border-primary)";
+                if (!batchPapersPerCategory) setBatchPapersPerCategory(1);
+              }}
+            />
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "6px", fontFamily: "var(--font-geist-mono)" }}>
+              Total papers to process: {batchCategories.length * batchPapersPerCategory}
+            </p>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <input
+              type="checkbox"
+              id="batchSkipAI"
+              checked={batchSkipAI}
+              onChange={(e) => setBatchSkipAI(e.target.checked)}
+              style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--accent)" }}
+            />
+            <label htmlFor="batchSkipAI" style={{ fontSize: "13px", color: "var(--text-secondary)", cursor: "pointer" }}>
+              Skip AI processing (extract raw text only, no cost)
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={batchLoading || batchCategories.length === 0}
+            style={{
+              width: "100%",
+              padding: "10px 16px",
+              background: "var(--accent)",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: batchLoading || batchCategories.length === 0 ? "not-allowed" : "pointer",
+              opacity: batchLoading || batchCategories.length === 0 ? 0.5 : 1,
+              transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
+            }}
+          >
+            {batchLoading ? "Starting Batch Processing..." : `Process ${batchCategories.length * batchPapersPerCategory} Papers`}
+          </button>
+          {batchMessage && (
+            <div style={{
+              padding: "12px",
+              background: "var(--error-muted)",
+              border: "0.5px solid var(--error)",
+              borderRadius: "6px",
+              fontSize: "13px",
+              color: "var(--error)",
+            }}>
+              {batchMessage}
+            </div>
+          )}
+        </form>
+      </Modal>
     </DndContext>
   );
 }

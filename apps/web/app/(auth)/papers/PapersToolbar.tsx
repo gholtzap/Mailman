@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import SearchInput from "./SearchInput";
 import BulkFolderPicker from "./BulkFolderPicker";
 
@@ -32,6 +31,8 @@ interface PapersToolbarProps {
   onToggleSidebar: () => void;
   groupByCategory: boolean;
   onGroupByCategoryChange: (enabled: boolean) => void;
+  onAddPaper: () => void;
+  onBatchProcess: () => void;
 }
 
 export default function PapersToolbar({
@@ -54,6 +55,8 @@ export default function PapersToolbar({
   onToggleSidebar,
   groupByCategory,
   onGroupByCategoryChange,
+  onAddPaper,
+  onBatchProcess,
 }: PapersToolbarProps) {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -259,26 +262,48 @@ export default function PapersToolbar({
           Folders
         </button>
 
-        <Link
-          href="/papers/new"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            padding: "7px 12px",
-            background: "var(--accent)",
-            color: "white",
-            borderRadius: "6px",
-            fontSize: "13px",
-            fontWeight: 500,
-            textDecoration: "none",
-            transition: "background 150ms cubic-bezier(0.25, 1, 0.5, 1)",
-            marginLeft: "auto",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent-hover)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "var(--accent)")}
-        >
-          + New Paper
-        </Link>
+        <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
+          <button
+            onClick={onBatchProcess}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "7px 12px",
+              background: "var(--bg-secondary)",
+              color: "var(--text-secondary)",
+              border: "0.5px solid var(--border-primary)",
+              borderRadius: "6px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-tertiary)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-secondary)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+          >
+            Batch Process
+          </button>
+          <button
+            onClick={onAddPaper}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "7px 12px",
+              background: "var(--accent)",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "background 150ms cubic-bezier(0.25, 1, 0.5, 1)",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent-hover)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "var(--accent)")}
+          >
+            + New Paper
+          </button>
+        </div>
       </div>
 
       {selectedCount > 0 && (

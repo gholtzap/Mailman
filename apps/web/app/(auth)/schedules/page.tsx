@@ -124,6 +124,7 @@ export default function SchedulesPage() {
 
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<RecurringSchedule | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [expandedScheduleId, setExpandedScheduleId] = useState<string | null>(null);
   const [runs, setRuns] = useState<ProcessingJob[]>([]);
@@ -216,6 +217,7 @@ export default function SchedulesPage() {
       if (res.ok) {
         setMessage("Schedule created successfully");
         resetForm();
+        setShowCreateModal(false);
         await fetchSchedules();
       } else {
         const error = await res.json();
@@ -499,27 +501,9 @@ export default function SchedulesPage() {
   };
 
   const renderFormFields = (mode: "create" | "edit") => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div>
-        <label style={labelStyle}>Name</label>
-        <input
-          type="text"
-          value={formName}
-          onChange={(e) => {
-            setFormName(e.target.value);
-            if (fieldErrors.has("name")) setFieldErrors(prev => { const next = new Set(prev); next.delete("name"); return next; });
-          }}
-          placeholder="Daily AI Papers"
-          style={{
-            ...inputStyle,
-            ...(fieldErrors.has("name") ? { borderColor: 'rgb(239, 68, 68)', borderWidth: '1.5px' } : {}),
-          }}
-          onFocus={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--accent)'}
-          onBlur={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--border-primary)'}
-        />
-      </div>
-
-      <div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      {/* Left column: Categories */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <label style={labelStyle}>
           Categories {formCategories.length > 0 && `(${formCategories.length} selected)`}
         </label>
@@ -528,12 +512,12 @@ export default function SchedulesPage() {
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
           placeholder="Filter categories (e.g., machine learning, cs.AI, robotics)"
-          style={{ ...inputStyle, marginBottom: '8px' }}
+          style={{ ...inputStyle, marginBottom: '0' }}
           onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
           onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-primary)'}
         />
         <div style={{
-          maxHeight: '300px',
+          maxHeight: '360px',
           overflowY: 'auto',
           padding: '12px',
           background: 'var(--bg-primary)',
@@ -560,9 +544,9 @@ export default function SchedulesPage() {
                 {section.section}
               </div>
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '4px'
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px'
               }}>
                 {section.categories.map(category => (
                   <label
@@ -571,7 +555,7 @@ export default function SchedulesPage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      padding: '6px',
+                      padding: '4px 6px',
                       cursor: 'pointer',
                       borderRadius: '4px',
                       transition: 'background 150ms cubic-bezier(0.25, 1, 0.5, 1)'
@@ -596,12 +580,12 @@ export default function SchedulesPage() {
                       }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-geist-mono)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-primary)', fontFamily: 'var(--font-geist-mono)' }}>
                         {category.id}
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: '8px' }}>
                         {category.name}
-                      </div>
+                      </span>
                     </div>
                   </label>
                 ))}
@@ -610,6 +594,27 @@ export default function SchedulesPage() {
             ))
           )}
         </div>
+      </div>
+
+      {/* Right column: Settings */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div>
+        <label style={labelStyle}>Name</label>
+        <input
+          type="text"
+          value={formName}
+          onChange={(e) => {
+            setFormName(e.target.value);
+            if (fieldErrors.has("name")) setFieldErrors(prev => { const next = new Set(prev); next.delete("name"); return next; });
+          }}
+          placeholder="Daily AI Papers"
+          style={{
+            ...inputStyle,
+            ...(fieldErrors.has("name") ? { borderColor: 'rgb(239, 68, 68)', borderWidth: '1.5px' } : {}),
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--accent)'}
+          onBlur={(e) => e.currentTarget.style.borderColor = fieldErrors.has("name") ? 'rgb(239, 68, 68)' : 'var(--border-primary)'}
+        />
       </div>
 
       <div>
@@ -782,7 +787,10 @@ export default function SchedulesPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+      {/* end right column */}
+      </div>
+
+      <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', marginTop: '4px' }}>
         {mode === "edit" ? (
           <>
             <button
@@ -885,24 +893,29 @@ export default function SchedulesPage() {
           borderRadius: '6px',
           padding: '16px'
         }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-            New Schedule
-          </h2>
-
-          {renderFormFields("create")}
-        </div>
-
-        <div style={{
-          background: 'var(--bg-secondary)',
-          border: '0.5px solid var(--border-primary)',
-          borderRadius: '6px',
-          padding: '16px'
-        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
               Your Schedules
             </h2>
             <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => { resetForm(); setShowCreateModal(true); }}
+                style={{
+                  padding: '4px 12px',
+                  background: 'var(--accent)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--accent-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--accent)'}
+              >
+                + Add Schedule
+              </button>
               <button
                 onClick={handleExport}
                 disabled={schedules.length === 0}
@@ -961,7 +974,7 @@ export default function SchedulesPage() {
 
           {schedules.length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              No schedules yet. Create one above to get started.
+              No schedules yet. Click &quot;+ Add Schedule&quot; to get started.
             </p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -1180,10 +1193,19 @@ export default function SchedulesPage() {
       )}
 
       <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="New Schedule"
+        maxWidth="900px"
+      >
+        {renderFormFields("create")}
+      </Modal>
+
+      <Modal
         isOpen={editingId !== null}
         onClose={handleCancelEdit}
         title="Edit Schedule"
-        maxWidth="600px"
+        maxWidth="900px"
       >
         {renderFormFields("edit")}
       </Modal>
