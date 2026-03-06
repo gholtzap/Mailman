@@ -6,7 +6,7 @@ import { setMockUserId, resetAuthMocks } from '../../__mocks__/@clerk/nextjs/ser
 import { setMockValidation, setMockEncryption, resetEncryptionMocks } from '../../__mocks__/lib/encryption/index'
 
 jest.mock('@clerk/nextjs/server')
-jest.mock('@/lib/encryption', () => require('../../__mocks__/lib/encryption/index'))
+jest.mock('@/lib/encryption', () => import('../../__mocks__/lib/encryption/index'))
 
 describe('/api/settings/api-key', () => {
   let client: MongoClient

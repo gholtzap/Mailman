@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface Folder {
@@ -41,9 +41,10 @@ export default function ContextMenu({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [position, setPosition] = useState({ x, y });
 
-  useEffect(() => {
-    if (!menuRef.current) return;
-    const rect = menuRef.current.getBoundingClientRect();
+  const measureAndPosition = useCallback((node: HTMLDivElement | null) => {
+    menuRef.current = node;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
     const newX = x + rect.width > window.innerWidth - 8 ? x - rect.width : x;
     const newY = y + rect.height > window.innerHeight - 8 ? Math.max(8, y - rect.height) : y;
     setPosition({ x: newX, y: newY });
@@ -70,7 +71,7 @@ export default function ContextMenu({
         onContextMenu={(e) => { e.preventDefault(); onClose(); }}
       />
       <div
-        ref={menuRef}
+        ref={measureAndPosition}
         style={{
           position: "fixed",
           left: position.x,
