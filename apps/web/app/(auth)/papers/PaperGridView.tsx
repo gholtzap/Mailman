@@ -1,7 +1,7 @@
 "use client";
 
 import PaperCard from "./PaperCard";
-import { Paper, Folder, PaperGroup } from "./page";
+import { Paper, Folder, PaperGroup } from "./PapersClient";
 
 interface PaperGridViewProps {
   papers: Paper[];

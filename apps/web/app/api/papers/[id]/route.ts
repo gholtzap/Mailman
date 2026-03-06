@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { getProcessedPapersCollection, getPapersCollection } from "@/lib/db/collections";
+import { getProcessedPapersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { apiError } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { fetchPaperDetail } from "@/lib/data/papers";
 
 export async function GET(
   request: Request,
@@ -19,23 +20,13 @@ export async function GET(
   const parsed = await parseRouteParams(params);
   if (parsed.error) return parsed.error;
 
-  const processedPapers = await getProcessedPapersCollection();
-  const processedPaper = await processedPapers.findOne({
-    _id: parsed.id,
-    userId: user._id,
-  });
+  const data = await fetchPaperDetail(user, parsed.id);
 
-  if (!processedPaper) {
+  if (!data) {
     return apiError("Paper not found", 404);
   }
 
-  const papers = await getPapersCollection();
-  const paper = await papers.findOne({ _id: processedPaper.paperId });
-
-  return NextResponse.json({
-    processedPaper,
-    paper,
-  });
+  return NextResponse.json(data);
 }
 
 export async function DELETE(

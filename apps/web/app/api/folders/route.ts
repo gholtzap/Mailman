@@ -6,6 +6,7 @@ import { parseRequestBody } from "@/lib/validation/parse-request";
 import { folderCreateSchema } from "@/lib/validation/schemas/folders";
 import { apiError } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { fetchFolders } from "@/lib/data/folders";
 
 export async function GET() {
   const result = await getAuthenticatedUser();
@@ -15,14 +16,9 @@ export async function GET() {
   const rateLimited = await checkRateLimit(user.clerkId, "read");
   if (rateLimited) return rateLimited;
 
-  const folders = await getFoldersCollection();
-  const userFolders = await folders
-    .find({ userId: user._id })
-    .sort({ order: 1 })
-    .limit(100)
-    .toArray();
+  const data = await fetchFolders(user);
 
-  return NextResponse.json({ folders: userFolders });
+  return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {

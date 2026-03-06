@@ -1,9 +1,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { getUsersCollection, getProcessedPapersCollection, getProcessingJobsCollection } from "@/lib/db/collections";
+import { getUsersCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
 import { apiError } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { fetchDashboardData } from "@/lib/data/dashboard";
 
 export async function GET() {
   const { userId } = await auth();
@@ -52,73 +53,11 @@ export async function GET() {
       log.info({ dbUserId: user._id }, "User created successfully");
     }
 
-    const processedPapers = await getProcessedPapersCollection();
-    const jobs = await getProcessingJobsCollection();
+    const data = await fetchDashboardData(user);
 
-    const recentPapers = await processedPapers
-      .find({ userId: user._id })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .toArray();
+    log.debug("Dashboard data retrieved");
 
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const activeJobs = await jobs
-      .find({
-        userId: user._id,
-        status: { $in: ["queued", "running", "failed"] },
-        updatedAt: { $gte: oneWeekAgo },
-      })
-      .sort({ createdAt: -1 })
-      .toArray();
-
-    const recentJobs = await jobs
-      .find({
-        userId: user._id,
-        type: "batch_scrape",
-        status: { $in: ["completed", "failed"] },
-      })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .toArray();
-
-    const completedCount = await processedPapers.countDocuments({
-      userId: user._id,
-      status: "completed",
-    });
-
-    const totalCost = await processedPapers
-      .aggregate([
-        { $match: { userId: user._id, status: "completed" } },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: "$costs.estimatedCostUsd" },
-          },
-        },
-      ])
-      .toArray();
-
-    log.debug(
-      {
-        recentPapersCount: recentPapers.length,
-        activeJobsCount: activeJobs.length,
-        recentJobsCount: recentJobs.length,
-        completedCount,
-      },
-      "Dashboard data retrieved"
-    );
-
-    return NextResponse.json({
-      recentPapers,
-      activeJobs,
-      recentJobs,
-      stats: {
-        completedPapers: completedCount,
-        monthlyUsage: user.usage.currentMonthPapersProcessed,
-        totalCost: totalCost[0]?.total || 0,
-        hasApiKey: !!user.apiKey,
-      },
-    });
+    return NextResponse.json(data);
   } catch (error) {
     log.error({ err: error }, "Dashboard API error");
     return apiError("Internal server error", 500, error instanceof Error ? error.message : "Unknown error");

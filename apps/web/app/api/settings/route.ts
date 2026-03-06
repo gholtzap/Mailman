@@ -5,6 +5,7 @@ import { parseRequestBody } from "@/lib/validation/parse-request";
 import { settingsUpdateSchema } from "@/lib/validation/schemas/settings";
 import { apiError } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { fetchSettings } from "@/lib/data/settings";
 
 export async function GET() {
   const { userId } = await auth();
@@ -44,17 +45,7 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({
-    email: user.email || "",
-    settings: {
-      ...user.settings,
-      keywords: user.settings.keywords || [],
-      keywordMatchMode: user.settings.keywordMatchMode || "any",
-    },
-    hasApiKey: !!user.apiKey?.encryptedValue,
-    apiKeyValid: user.apiKey?.isValid ?? false,
-    usage: user.usage,
-  });
+  return NextResponse.json(fetchSettings(user));
 }
 
 export async function PUT(request: Request) {
