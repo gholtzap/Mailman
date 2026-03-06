@@ -28,6 +28,12 @@ interface Folder {
   color: string;
 }
 
+interface PaperGroup {
+  category: string;
+  displayName: string;
+  papers: Paper[];
+}
+
 interface PaperListViewProps {
   papers: Paper[];
   folders: Folder[];
@@ -39,6 +45,7 @@ interface PaperListViewProps {
   sortField: string;
   sortDirection: "asc" | "desc";
   onSort: (field: string) => void;
+  groupedPapers: PaperGroup[] | null;
 }
 
 export default function PaperListView({
@@ -52,6 +59,7 @@ export default function PaperListView({
   sortField,
   sortDirection,
   onSort,
+  groupedPapers,
 }: PaperListViewProps) {
   const allSelected = papers.length > 0 && papers.every((p) => selectedIds.has(p._id));
 
@@ -101,17 +109,58 @@ export default function PaperListView({
         </div>
       </div>
 
-      {papers.map((paper) => (
-        <PaperRow
-          key={paper._id}
-          paper={paper}
-          folderColor={getFolderColor(paper)}
-          isSelected={selectedIds.has(paper._id)}
-          onToggleSelect={onToggleSelect}
-          onSelect={onSelect}
-          onContextMenu={onContextMenu}
-        />
-      ))}
+      {groupedPapers ? (
+        groupedPapers.map((group) => (
+          <div key={group.category}>
+            <div style={{
+              padding: "8px 16px",
+              background: "var(--bg-tertiary)",
+              borderBottom: "0.5px solid var(--border-primary)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}>
+              <span style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "var(--text-primary)",
+              }}>
+                {group.displayName}
+              </span>
+              <span style={{
+                fontSize: "11px",
+                color: "var(--text-muted)",
+                fontVariantNumeric: "tabular-nums",
+              }}>
+                ({group.papers.length})
+              </span>
+            </div>
+            {group.papers.map((paper) => (
+              <PaperRow
+                key={paper._id}
+                paper={paper}
+                folderColor={getFolderColor(paper)}
+                isSelected={selectedIds.has(paper._id)}
+                onToggleSelect={onToggleSelect}
+                onSelect={onSelect}
+                onContextMenu={onContextMenu}
+              />
+            ))}
+          </div>
+        ))
+      ) : (
+        papers.map((paper) => (
+          <PaperRow
+            key={paper._id}
+            paper={paper}
+            folderColor={getFolderColor(paper)}
+            isSelected={selectedIds.has(paper._id)}
+            onToggleSelect={onToggleSelect}
+            onSelect={onSelect}
+            onContextMenu={onContextMenu}
+          />
+        ))
+      )}
     </div>
   );
 }

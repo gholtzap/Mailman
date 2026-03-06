@@ -53,21 +53,39 @@ function matchesKeywords(
   return keywordsLower.some((kw) => combinedText.includes(kw));
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchArxivPapers(
   category: string,
   maxResults: number,
   log: ReturnType<typeof createLogger>
 ): Promise<FetchedPaper[]> {
   const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "PaperReader/1.0 (research-paper-aggregator)",
-    },
-    signal: AbortSignal.timeout(30_000),
-  });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch papers from arXiv: ${response.status}`);
+  const maxRetries = 3;
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    response = await fetch(url, {
+      headers: {
+        "User-Agent": "PaperReader/1.0 (research-paper-aggregator)",
+      },
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("Retry-After");
+      const backoff = retryAfter ? parseInt(retryAfter, 10) * 1000 || 3000 * (attempt + 1) : 3000 * (attempt + 1);
+      log.warn({ category, attempt: attempt + 1, backoffMs: backoff, retryAfter }, "arXiv rate limited (429), retrying after backoff");
+      await delay(backoff);
+      continue;
+    }
+    break;
+  }
+
+  if (!response || !response.ok) {
+    throw new Error(`Failed to fetch papers from arXiv: ${response?.status ?? "no response"}`);
   }
 
   const xml = await response.text();
@@ -248,11 +266,9 @@ export async function processBatchScrape({
 
     for (let i = 0; i < arxivCategories.length; i++) {
       const category = arxivCategories[i];
-
       if (i > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 3500));
+        await delay(3500);
       }
-
       log.info({ category, papersPerCategory }, "Fetching papers for category");
 
       let fetchedPapers: FetchedPaper[];

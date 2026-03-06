@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { DndContext, closestCenter, pointerWithin, DragOverlay, CollisionDetection, DragStartEvent, DragEndEvent, PointerSensor, useSensors, useSensor } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 const customCollisionDetection: CollisionDetection = (args) => {
   const pointerIntersections = pointerWithin(args);
@@ -69,6 +70,7 @@ export default function PapersPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [groupByCategory, setGroupByCategory] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const lastSelectedIndex = useRef<number | null>(null);
 
@@ -314,6 +316,26 @@ export default function PapersPage() {
     }
   };
 
+  const groupedPapers = useMemo(() => {
+    if (!groupByCategory) return null;
+    const groups: { category: string; displayName: string; papers: Paper[] }[] = [];
+    const groupMap = new Map<string, Paper[]>();
+    for (const paper of papers) {
+      const cat = paper.paper?.categories?.[0] || "uncategorized";
+      if (!groupMap.has(cat)) groupMap.set(cat, []);
+      groupMap.get(cat)!.push(paper);
+    }
+    for (const [category, categoryPapers] of groupMap) {
+      groups.push({
+        category,
+        displayName: category === "uncategorized" ? "Uncategorized" : getCategoryDisplayName(category),
+        papers: categoryPapers,
+      });
+    }
+    groups.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    return groups;
+  }, [papers, groupByCategory]);
+
   const currentFolderName = selectedFolderId && selectedFolderId !== "unfiled"
     ? folders.find((f) => f._id === selectedFolderId)?.name || null
     : null;
@@ -413,6 +435,8 @@ export default function PapersPage() {
               onNavigateToRoot={() => setSelectedFolderId(null)}
               folderName={currentFolderName}
               onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+              groupByCategory={groupByCategory}
+              onGroupByCategoryChange={setGroupByCategory}
             />
 
             {papers.length === 0 ? (
@@ -439,6 +463,7 @@ export default function PapersPage() {
                 sortField={sortField}
                 sortDirection={sortDirection}
                 onSort={handleSort}
+                groupedPapers={groupedPapers}
               />
             ) : (
               <PaperGridView
@@ -448,6 +473,7 @@ export default function PapersPage() {
                 onToggleSelect={handleToggleSelect}
                 onSelect={setSelectedPaperId}
                 onContextMenu={handleContextMenu}
+                groupedPapers={groupedPapers}
               />
             )}
           </div>
