@@ -1,4 +1,4 @@
-name: Build
+name: Test
 
 on:
   pull_request:
@@ -37,7 +37,3 @@ jobs:
         working-directory: apps/web
         env:
           MONGOMS_DOWNLOAD_DIR: ${{ github.workspace }}/.cache/mongodb-binaries
-
-      - name: Build
-        run: npm run build
-        working-directory: apps/web
