@@ -30,6 +30,8 @@ interface PapersToolbarProps {
   onNavigateToRoot: () => void;
   folderName: string | null;
   onToggleSidebar: () => void;
+  groupByCategory: boolean;
+  onGroupByCategoryChange: (enabled: boolean) => void;
 }
 
 export default function PapersToolbar({
@@ -50,6 +52,8 @@ export default function PapersToolbar({
   onNavigateToRoot,
   folderName,
   onToggleSidebar,
+  groupByCategory,
+  onGroupByCategoryChange,
 }: PapersToolbarProps) {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -164,6 +168,34 @@ export default function PapersToolbar({
             </>
           )}
         </div>
+
+        <button
+          onClick={() => onGroupByCategoryChange(!groupByCategory)}
+          style={{
+            padding: "7px 10px",
+            fontSize: "13px",
+            fontWeight: 500,
+            border: "0.5px solid var(--border-primary)",
+            background: groupByCategory ? "var(--accent)" : "var(--bg-secondary)",
+            color: groupByCategory ? "white" : "var(--text-secondary)",
+            borderRadius: "6px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="3" rx="1" />
+            <rect x="3" y="10" width="7" height="3" rx="1" />
+            <rect x="3" y="17" width="7" height="3" rx="1" />
+            <line x1="14" y1="4.5" x2="21" y2="4.5" />
+            <line x1="14" y1="11.5" x2="21" y2="11.5" />
+            <line x1="14" y1="18.5" x2="21" y2="18.5" />
+          </svg>
+          Group
+        </button>
 
         <div style={{ display: "flex", border: "0.5px solid var(--border-primary)", borderRadius: "6px", overflow: "hidden" }}>
           <button

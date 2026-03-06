@@ -8,6 +8,7 @@ import { processSinglePaper } from "@/lib/processing/single";
 import { fetchMedrxivPapers } from "@/lib/processing/medrxiv";
 import { sendBatchCompletionEmail } from "@/lib/email/send-batch-completion";
 import { createLogger } from "@/lib/logging";
+import { delay, fetchWithRetry } from "@/lib/retry";
 import type { PaperSource } from "@/lib/types";
 
 interface ProcessBatchScrapeParams {
@@ -59,12 +60,15 @@ async function fetchArxivPapers(
   log: ReturnType<typeof createLogger>
 ): Promise<FetchedPaper[]> {
   const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "PaperReader/1.0 (research-paper-aggregator)",
+
+  const response = await fetchWithRetry(
+    url,
+    {
+      headers: { "User-Agent": "PaperReader/1.0 (research-paper-aggregator)" },
+      signal: AbortSignal.timeout(30_000),
     },
-    signal: AbortSignal.timeout(30_000),
-  });
+    { maxRetries: 3 }
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to fetch papers from arXiv: ${response.status}`);
@@ -248,11 +252,9 @@ export async function processBatchScrape({
 
     for (let i = 0; i < arxivCategories.length; i++) {
       const category = arxivCategories[i];
-
       if (i > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 3500));
+        await delay(3500);
       }
-
       log.info({ category, papersPerCategory }, "Fetching papers for category");
 
       let fetchedPapers: FetchedPaper[];
