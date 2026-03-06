@@ -8,6 +8,7 @@ import { processSinglePaper } from "@/lib/processing/single";
 import { fetchMedrxivPapers } from "@/lib/processing/medrxiv";
 import { sendBatchCompletionEmail } from "@/lib/email/send-batch-completion";
 import { createLogger } from "@/lib/logging";
+import { delay, fetchWithRetry } from "@/lib/backoff";
 import type { PaperSource } from "@/lib/types";
 
 interface ProcessBatchScrapeParams {
@@ -53,10 +54,6 @@ function matchesKeywords(
   return keywordsLower.some((kw) => combinedText.includes(kw));
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function fetchArxivPapers(
   category: string,
   maxResults: number,
@@ -64,28 +61,17 @@ async function fetchArxivPapers(
 ): Promise<FetchedPaper[]> {
   const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
 
-  const maxRetries = 3;
-  let response: Response | null = null;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    response = await fetch(url, {
-      headers: {
-        "User-Agent": "PaperReader/1.0 (research-paper-aggregator)",
-      },
+  const response = await fetchWithRetry(
+    url,
+    {
+      headers: { "User-Agent": "PaperReader/1.0 (research-paper-aggregator)" },
       signal: AbortSignal.timeout(30_000),
-    });
+    },
+    { maxRetries: 3, baseDelayMs: 3000 }
+  );
 
-    if (response.status === 429) {
-      const retryAfter = response.headers.get("Retry-After");
-      const backoff = retryAfter ? parseInt(retryAfter, 10) * 1000 || 3000 * (attempt + 1) : 3000 * (attempt + 1);
-      log.warn({ category, attempt: attempt + 1, backoffMs: backoff, retryAfter }, "arXiv rate limited (429), retrying after backoff");
-      await delay(backoff);
-      continue;
-    }
-    break;
-  }
-
-  if (!response || !response.ok) {
-    throw new Error(`Failed to fetch papers from arXiv: ${response?.status ?? "no response"}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch papers from arXiv: ${response.status}`);
   }
 
   const xml = await response.text();
