@@ -80,7 +80,9 @@ export async function processSinglePaper({
     const paperRecord = await papersCollection.findOne({ arxivId });
     const pdfUrl = paperRecord?.pdfUrl || `https://arxiv.org/pdf/${arxivId}.pdf`;
 
-    const pdfResponse = await fetch(pdfUrl);
+    const pdfResponse = await fetch(pdfUrl, {
+      signal: AbortSignal.timeout(30_000),
+    });
     if (!pdfResponse.ok) {
       throw new Error(`Failed to fetch PDF: ${pdfResponse.status}`);
     }
