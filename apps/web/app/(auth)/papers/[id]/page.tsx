@@ -45,16 +45,15 @@ export default function PaperDetailPage() {
   const [activeTab, setActiveTab] = useState<"technical" | "abstract">("technical");
 
   useEffect(() => {
+    const fetchPaper = async () => {
+      const res = await fetch(`/api/papers/${id}`);
+      const data = await res.json();
+      setProcessedPaper(data.processedPaper);
+      setPaper(data.paper);
+      setLoading(false);
+    };
     fetchPaper();
   }, [id]);
-
-  const fetchPaper = async () => {
-    const res = await fetch(`/api/papers/${id}`);
-    const data = await res.json();
-    setProcessedPaper(data.processedPaper);
-    setPaper(data.paper);
-    setLoading(false);
-  };
 
   if (loading) {
     return (

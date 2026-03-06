@@ -45,16 +45,19 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
   const [activeTab, setActiveTab] = useState<"technical" | "abstract">("technical");
 
   useEffect(() => {
-    setLoading(true);
-    setActiveTab("technical");
+    let cancelled = false;
     const fetchPaper = async () => {
       const res = await fetch(`/api/papers/${paperId}`);
       const data = await res.json();
-      setProcessedPaper(data.processedPaper);
-      setPaper(data.paper);
-      setLoading(false);
+      if (!cancelled) {
+        setProcessedPaper(data.processedPaper);
+        setPaper(data.paper);
+        setLoading(false);
+        setActiveTab("technical");
+      }
     };
     fetchPaper();
+    return () => { cancelled = true; };
   }, [paperId]);
 
   return (

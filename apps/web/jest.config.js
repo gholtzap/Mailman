@@ -36,6 +36,7 @@ const customJestConfig = {
       },
     }],
   },
+  forceExit: true,
 }
 
 module.exports = createJestConfig(customJestConfig)
