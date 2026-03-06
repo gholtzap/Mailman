@@ -4,35 +4,7 @@ import { useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import StatusBadge from "./StatusBadge";
 import SortableColumnHeader from "./SortableColumnHeader";
-
-interface Paper {
-  _id: string;
-  paperId: string;
-  arxivId: string;
-  status: string;
-  folderId?: string;
-  createdAt: string;
-  costs?: {
-    estimatedCostUsd: number;
-  };
-  paper?: {
-    title: string;
-    authors: string[];
-    categories: string[];
-  };
-}
-
-interface Folder {
-  _id: string;
-  name: string;
-  color: string;
-}
-
-interface PaperGroup {
-  category: string;
-  displayName: string;
-  papers: Paper[];
-}
+import { Paper, Folder, PaperGroup } from "./page";
 
 interface PaperListViewProps {
   papers: Paper[];

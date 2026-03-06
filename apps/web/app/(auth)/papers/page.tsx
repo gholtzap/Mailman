@@ -19,14 +19,14 @@ import PaperListView from "./PaperListView";
 import PaperGridView from "./PaperGridView";
 import ContextMenu from "./ContextMenu";
 
-interface Folder {
+export interface Folder {
   _id: string;
   name: string;
   color: string;
   order: number;
 }
 
-interface Paper {
+export interface Paper {
   _id: string;
   paperId: string;
   arxivId: string;
@@ -43,10 +43,16 @@ interface Paper {
   };
 }
 
-interface ContextMenuState {
+export interface ContextMenuState {
   x: number;
   y: number;
   paperId: string;
+}
+
+export interface PaperGroup {
+  category: string;
+  displayName: string;
+  papers: Paper[];
 }
 
 function getStoredViewMode(): "list" | "grid" {

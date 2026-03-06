@@ -8,7 +8,7 @@ import { processSinglePaper } from "@/lib/processing/single";
 import { fetchMedrxivPapers } from "@/lib/processing/medrxiv";
 import { sendBatchCompletionEmail } from "@/lib/email/send-batch-completion";
 import { createLogger } from "@/lib/logging";
-import { delay, fetchWithRetry } from "@/lib/backoff";
+import { delay, fetchWithRetry } from "@/lib/retry";
 import type { PaperSource } from "@/lib/types";
 
 interface ProcessBatchScrapeParams {

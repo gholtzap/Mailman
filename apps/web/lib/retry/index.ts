@@ -18,9 +18,9 @@ function computeBackoff(
 
   if (retryAfterHeader) {
     const parsed = parseInt(retryAfterHeader, 10);
-    base = Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : baseDelayMs * (attempt + 1);
+    base = Number.isFinite(parsed) && parsed > 0 ? parsed * 1000 : baseDelayMs * 2 ** attempt;
   } else {
-    base = baseDelayMs * (attempt + 1);
+    base = baseDelayMs * 2 ** attempt;
   }
 
   const jitter = base * jitterFraction * (Math.random() * 2 - 1);
@@ -39,7 +39,8 @@ export async function fetchWithRetry(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const response = await fetch(url, init);
 
-    if (response.status !== 429) {
+    const retryable = response.status === 429 || response.status === 502 || response.status === 503;
+    if (!retryable) {
       return response;
     }
 
