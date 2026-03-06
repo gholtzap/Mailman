@@ -148,9 +148,8 @@ export function Sidebar() {
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 8px' }}>
           <NavLink href="/dashboard" active={pathname === '/dashboard'} onClick={() => setMobileMenuOpen(false)}>Dashboard</NavLink>
           <NavLink href="/papers" active={pathname === '/papers'} onClick={() => setMobileMenuOpen(false)}>Papers</NavLink>
-          <NavLink href="/papers/new" active={pathname === '/papers/new'} onClick={() => setMobileMenuOpen(false)}>New Paper</NavLink>
-          <NavLink href="/batch" active={pathname === '/batch'} onClick={() => setMobileMenuOpen(false)}>Batch Process</NavLink>
           <NavLink href="/schedules" active={pathname === '/schedules'} onClick={() => setMobileMenuOpen(false)}>Schedules</NavLink>
+          <NavLink href="/jobs" active={pathname === '/jobs'} onClick={() => setMobileMenuOpen(false)}>Jobs</NavLink>
           <div style={{ marginTop: 'auto' }}>
             <NavLink href="/settings" active={pathname === '/settings'} onClick={() => setMobileMenuOpen(false)}>Settings</NavLink>
           </div>
