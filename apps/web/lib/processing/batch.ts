@@ -261,7 +261,13 @@ export async function processBatchScrape({
     const arxivCategories = categories.filter((c) => !c.startsWith("medrxiv:"));
     const medrxivCategoryIds = categories.filter((c) => c.startsWith("medrxiv:"));
 
-    for (const category of arxivCategories) {
+    for (let i = 0; i < arxivCategories.length; i++) {
+      const category = arxivCategories[i];
+
+      if (i > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 3500));
+      }
+
       log.info({ category, papersPerCategory }, "Fetching papers for category");
 
       let fetchedPapers: FetchedPaper[];
