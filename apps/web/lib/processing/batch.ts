@@ -170,75 +170,60 @@ export async function processBatchScrape({
           continue;
         }
 
-        await papersCollection.updateOne(
+        const paper = await papersCollection.findOneAndUpdate(
           { arxivId: paperData.arxivId },
           { $setOnInsert: paperData },
-          { upsert: true }
+          { upsert: true, returnDocument: "after" }
         );
-
-        const paper = await papersCollection.findOne({ arxivId: paperData.arxivId });
         if (!paper) {
           log.error({ arxivId: paperData.arxivId }, "Paper not found after upsert");
           continue;
         }
 
-        const existingProcessed = await processedPapers.findOne({
-          userId,
-          arxivId: paperData.arxivId,
-        });
+        const claimed = await processedPapers.findOneAndUpdate(
+          {
+            userId,
+            arxivId: paperData.arxivId,
+            status: "failed",
+          },
+          {
+            $set: { status: "pending", updatedAt: new Date() },
+            $unset: { error: "" },
+          },
+          { returnDocument: "after" }
+        );
 
-        if (existingProcessed && existingProcessed.status !== "failed") {
-          alreadyProcessedCount++;
-          log.debug({ arxivId: paperData.arxivId, status: existingProcessed.status }, "Paper already processed by user");
-          continue;
-        }
+        let processedPaperId: string;
 
-        if (existingProcessed && existingProcessed.status === "failed") {
-          await processedPapers.updateOne(
-            { _id: existingProcessed._id },
-            { $set: { status: "pending", error: undefined, updatedAt: new Date() } }
-          );
+        if (claimed) {
           log.info({ arxivId: paperData.arxivId }, "Retrying previously failed paper");
-
-          totalPapersQueued++;
-
+          processedPaperId = claimed._id!.toString();
+        } else {
           try {
-            await processSinglePaper({
-              processedPaperId: existingProcessed._id!.toString(),
-              jobId,
+            const procResult = await processedPapers.insertOne({
+              userId,
+              paperId: paper._id!,
               arxivId: paperData.arxivId,
-              encryptedApiKey,
-              skipAI: skipAI ?? false,
+              status: "pending",
+              createdAt: new Date(),
+              updatedAt: new Date(),
             });
-          } catch (paperError) {
-            log.error({ err: paperError, arxivId: paperData.arxivId }, "Failed to process paper on retry");
-          }
-
-          await jobs.updateOne(
-            { _id: new ObjectId(jobId) },
-            {
-              $set: { updatedAt: new Date() },
-              $inc: { "progress.completed": 1 },
+            processedPaperId = procResult.insertedId.toString();
+          } catch (err: unknown) {
+            if (err && typeof err === "object" && "code" in err && err.code === 11000) {
+              alreadyProcessedCount++;
+              log.debug({ arxivId: paperData.arxivId }, "Paper already processed by user");
+              continue;
             }
-          );
-
-          continue;
+            throw err;
+          }
         }
-
-        const procResult = await processedPapers.insertOne({
-          userId,
-          paperId: paper._id!,
-          arxivId: paperData.arxivId,
-          status: "pending",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
 
         totalPapersQueued++;
 
         try {
           await processSinglePaper({
-            processedPaperId: procResult.insertedId.toString(),
+            processedPaperId,
             jobId,
             arxivId: paperData.arxivId,
             encryptedApiKey,

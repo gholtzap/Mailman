@@ -36,6 +36,7 @@ async function initializeDatabase() {
 
     const processedPapersCollection = db.collection("processed_papers");
     await processedPapersCollection.createIndex({ userId: 1, paperId: 1 }, { unique: true });
+    await processedPapersCollection.createIndex({ userId: 1, arxivId: 1 }, { unique: true });
     await processedPapersCollection.createIndex({ arxivId: 1 });
     await processedPapersCollection.createIndex({ status: 1 });
     await processedPapersCollection.createIndex({ createdAt: -1 });
