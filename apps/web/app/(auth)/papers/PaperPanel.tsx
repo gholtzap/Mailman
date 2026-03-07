@@ -48,6 +48,7 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
     let cancelled = false;
     const fetchPaper = async () => {
       const res = await fetch(`/api/papers/${paperId}`);
+      if (!res.ok || cancelled) return;
       const data = await res.json();
       if (!cancelled) {
         setProcessedPaper(data.processedPaper);

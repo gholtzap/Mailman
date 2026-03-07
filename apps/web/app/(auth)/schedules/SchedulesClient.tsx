@@ -140,6 +140,7 @@ export default function SchedulesClient({ initialData, userEmail: initialUserEma
   const fetchSchedules = async () => {
     try {
       const res = await fetch("/api/schedules");
+      if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
       setSchedules(data.schedules || []);
     } catch (error) {
@@ -460,6 +461,7 @@ export default function SchedulesClient({ initialData, userEmail: initialUserEma
     setRunsLoading(true);
     try {
       const res = await fetch(`/api/schedules/${scheduleId}/runs?limit=20`);
+      if (!res.ok) throw new Error("Failed to fetch runs");
       const data = await res.json();
       setRuns(data.runs || []);
     } catch {

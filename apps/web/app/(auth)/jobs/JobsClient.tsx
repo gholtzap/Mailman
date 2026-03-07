@@ -50,6 +50,7 @@ export default function JobsClient({ initialData }: { initialData: JobsData }) {
 
     const url = params.toString() ? `/api/jobs?${params}` : "/api/jobs";
     const res = await fetch(url);
+    if (!res.ok) return;
     const data = await res.json();
     setJobs(data.jobs);
     setLoading(false);

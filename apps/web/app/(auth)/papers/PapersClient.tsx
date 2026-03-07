@@ -128,12 +128,14 @@ export default function PapersClient({ initialPapers, initialFolders }: { initia
 
     const url = params.toString() ? `/api/papers?${params}` : "/api/papers";
     const res = await fetch(url);
+    if (!res.ok) return;
     const data = await res.json();
     setPapers(data.papers);
   }, [statusFilter, selectedFolderId, sortField, sortDirection, searchQuery]);
 
   const fetchFolders = useCallback(async () => {
     const res = await fetch("/api/folders");
+    if (!res.ok) return;
     const data = await res.json();
     setFolders(data.folders);
   }, []);

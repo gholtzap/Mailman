@@ -33,6 +33,7 @@ export default function SettingsClient({ initialData }: { initialData: SettingsD
 
   const fetchSettings = async () => {
     const res = await fetch("/api/settings");
+    if (!res.ok) return;
     const data = await res.json();
 
     setHasApiKey(data.hasApiKey);
