@@ -52,7 +52,7 @@ export async function fetchDashboardData(user: WithId<User>) {
       completedPapers: completedCount,
       monthlyUsage: user.usage.currentMonthPapersProcessed,
       totalCost: totalCostResult[0]?.total || 0,
-      hasApiKey: !!user.apiKey,
+      hasApiKey: !!user.apiKey?.encryptedValue,
     },
   });
 }

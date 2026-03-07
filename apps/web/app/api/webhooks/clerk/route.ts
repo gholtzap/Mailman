@@ -1,9 +1,9 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { getUsersCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
 import { apiError } from "@/lib/api/errors";
+import { findOrCreateUser } from "@/lib/db/find-or-create-user";
 
 export async function POST(req: Request) {
   const log = createLogger({ route: "clerk-webhook" });
@@ -48,24 +48,9 @@ export async function POST(req: Request) {
 
   if (eventType === "user.created") {
     const { id, email_addresses } = evt.data;
-    const email = email_addresses[0]?.email_address;
+    const email = email_addresses[0]?.email_address || "";
 
-    const users = await getUsersCollection();
-    await users.insertOne({
-      clerkId: id,
-      email,
-      settings: {
-        defaultCategories: ["cs.AI", "cs.LG"],
-        maxPagesPerPaper: 50,
-        papersPerCategory: 5,
-      },
-      usage: {
-        currentMonthPapersProcessed: 0,
-        lastResetDate: new Date(),
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    await findOrCreateUser(id, email);
     log.info({ clerkId: id, email }, "User created successfully");
   }
 

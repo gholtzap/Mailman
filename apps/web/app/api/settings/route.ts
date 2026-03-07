@@ -6,6 +6,7 @@ import { settingsUpdateSchema } from "@/lib/validation/schemas/settings";
 import { apiError } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { fetchSettings } from "@/lib/data/settings";
+import { findOrCreateUser } from "@/lib/db/find-or-create-user";
 
 export async function GET() {
   const { userId } = await auth();
@@ -16,33 +17,12 @@ export async function GET() {
   const rateLimited = await checkRateLimit(userId, "read");
   if (rateLimited) return rateLimited;
 
-  const users = await getUsersCollection();
-  let user = await users.findOne({ clerkId: userId });
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
 
+  const user = await findOrCreateUser(userId, email);
   if (!user) {
-    const clerkUser = await currentUser();
-    const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
-
-    const result = await users.insertOne({
-      clerkId: userId,
-      email,
-      settings: {
-        defaultCategories: ["cs.AI", "cs.LG"],
-        maxPagesPerPaper: 50,
-        papersPerCategory: 5,
-      },
-      usage: {
-        currentMonthPapersProcessed: 0,
-        lastResetDate: new Date(),
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    user = await users.findOne({ _id: result.insertedId });
-    if (!user) {
-      return apiError("Failed to create user", 500);
-    }
+    return apiError("Failed to create user", 500);
   }
 
   return NextResponse.json(fetchSettings(user));

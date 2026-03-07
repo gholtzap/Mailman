@@ -1,6 +1,6 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
-import { getUsersCollection } from "@/lib/db/collections";
+import { findOrCreateUser } from "@/lib/db/find-or-create-user";
 import { WithId } from "mongodb";
 import { User } from "@/lib/types";
 
@@ -10,8 +10,10 @@ export async function getUserForPage(): Promise<WithId<User>> {
     notFound();
   }
 
-  const users = await getUsersCollection();
-  const user = await users.findOne({ clerkId: userId });
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
+
+  const user = await findOrCreateUser(userId, email);
   if (!user) {
     notFound();
   }
