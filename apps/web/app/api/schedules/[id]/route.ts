@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
 import { getRecurringSchedulesCollection } from "@/lib/db/collections";
 import { computeNextRunAt } from "@/lib/scheduling/next-run";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { scheduleUpdateSchema, validateScheduleTiming } from "@/lib/validation/schemas/schedules";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
@@ -32,7 +31,7 @@ export async function GET(
     return apiError("Schedule not found", 404);
   }
 
-  return NextResponse.json({ schedule });
+  return apiResponse({ schedule });
 }
 
 export async function PUT(
@@ -150,7 +149,7 @@ export async function PUT(
       return apiError("Schedule not found", 404);
     }
 
-    return NextResponse.json({ success: true, schedule: result });
+    return apiResponse({ success: true, schedule: result });
   } catch (error: any) {
     if (error.code === 11000) {
       return apiError("A schedule with this name already exists", 400);
@@ -185,7 +184,7 @@ export async function DELETE(
       return apiError("Schedule not found", 404);
     }
 
-    return NextResponse.json({ success: true });
+    return apiResponse({ success: true });
   } catch (error) {
     console.error('[Schedule Delete API] ERROR:', error);
     return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));

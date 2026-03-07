@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import StatusBadge from "./StatusBadge";
 import SortableColumnHeader from "./SortableColumnHeader";
-import { Paper, Folder, PaperGroup } from "./page";
+import { Paper, Folder, PaperGroup } from "./PapersClient";
 
 interface PaperListViewProps {
   papers: Paper[];

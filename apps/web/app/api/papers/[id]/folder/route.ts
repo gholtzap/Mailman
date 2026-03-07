@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getProcessedPapersCollection, getFoldersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { paperFolderSchema } from "@/lib/validation/schemas/papers";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function PUT(
@@ -50,5 +49,5 @@ export async function PUT(
     return apiError("Paper not found", 404);
   }
 
-  return NextResponse.json({ paper: result });
+  return apiResponse({ paper: result });
 }

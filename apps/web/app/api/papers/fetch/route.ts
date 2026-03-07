@@ -4,7 +4,7 @@ import { getPapersCollection } from "@/lib/db/collections";
 import { createLogger } from "@/lib/logging";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { papersFetchSchema } from "@/lib/validation/schemas/papers";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { MEDRXIV_CATEGORY_BY_API_NAME } from "@/lib/medrxiv-categories";
 
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
 
     if (existing) {
       log.info({ arxivId: paperId }, "Paper already exists in database");
-      return NextResponse.json({ paper: existing });
+      return apiResponse({ paper: existing });
     }
 
     log.info({ arxivId: paperId }, `Fetching metadata from ${source} API`);
@@ -189,12 +189,12 @@ export async function POST(request: Request) {
 
     if (result.upsertedId) {
       log.info({ arxivId: paperId, paperId: result.upsertedId }, "Paper created successfully");
-      return NextResponse.json({ paper: { _id: result.upsertedId, ...metadata } });
+      return apiResponse({ paper: { _id: result.upsertedId, ...metadata } });
     }
 
     const finalPaper = await papers.findOne({ arxivId: paperId });
     log.info({ arxivId: paperId }, "Paper retrieved successfully");
-    return NextResponse.json({ paper: finalPaper });
+    return apiResponse({ paper: finalPaper });
   } catch (error) {
     log.error({ err: error }, "Failed to fetch paper");
     return apiError("Failed to fetch paper", 500, error instanceof Error ? error.message : String(error));
