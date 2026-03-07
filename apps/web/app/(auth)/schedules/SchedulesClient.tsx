@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { RecurringSchedule, ProcessingJob } from "@/lib/types";
 import { ARXIV_CATEGORIES } from "@/lib/arxiv-categories";
 import { MEDRXIV_CATEGORIES } from "@/lib/medrxiv-categories";
@@ -104,7 +104,7 @@ const labelStyle = {
   marginBottom: "6px",
 };
 
-export default function SchedulesClient({ initialData }: { initialData: { schedules: any[]; total: number } }) {
+export default function SchedulesClient({ initialData, userEmail: initialUserEmail }: { initialData: { schedules: any[]; total: number }; userEmail: string }) {
   const [schedules, setSchedules] = useState<RecurringSchedule[]>(initialData.schedules);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,8 +118,8 @@ export default function SchedulesClient({ initialData }: { initialData: { schedu
   const [formCategories, setFormCategories] = useState<string[]>([]);
   const [formPapersPerCategory, setFormPapersPerCategory] = useState(5);
   const [formIntervalDays, setFormIntervalDays] = useState(1);
-  const [formEmail, setFormEmail] = useState("");
-  const [userEmail, setUserEmail] = useState("");
+  const [formEmail, setFormEmail] = useState(initialUserEmail);
+  const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [categoryFilter, setCategoryFilter] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
@@ -136,17 +136,6 @@ export default function SchedulesClient({ initialData }: { initialData: { schedu
   const [formTimezone, setFormTimezone] = useState(getBrowserTimezone());
   const [timezoneOptions] = useState(getTimezoneOptions);
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.email) {
-          setUserEmail(data.email);
-          setFormEmail(data.email);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   const fetchSchedules = async () => {
     try {

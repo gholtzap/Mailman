@@ -6,5 +6,5 @@ export default async function SchedulesPage() {
   const user = await getUserForPage();
   const initialData = await fetchSchedules(user);
 
-  return <SchedulesClient initialData={initialData} />;
+  return <SchedulesClient initialData={initialData} userEmail={user.email} />;
 }
