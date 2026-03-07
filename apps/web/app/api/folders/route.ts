@@ -1,10 +1,9 @@
-import { NextResponse } from "next/server";
 import { getFoldersCollection } from "@/lib/db/collections";
 import { FOLDER_COLORS, DEFAULT_FOLDER_COLOR } from "@/lib/constants/folder-colors";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { folderCreateSchema } from "@/lib/validation/schemas/folders";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { fetchFolders } from "@/lib/data/folders";
 
@@ -18,7 +17,7 @@ export async function GET() {
 
   const data = await fetchFolders(user);
 
-  return NextResponse.json(data);
+  return apiResponse(data);
 }
 
 export async function POST(request: Request) {
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
     });
 
     const created = await folders.findOne({ _id: result.insertedId });
-    return NextResponse.json({ folder: created }, { status: 201 });
+    return apiResponse({ folder: created }, { status: 201 });
   } catch (error: any) {
     if (error.code === 11000) {
       return apiError("A folder with this name already exists", 409);

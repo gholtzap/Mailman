@@ -1,9 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { settingsUpdateSchema } from "@/lib/validation/schemas/settings";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { fetchSettings } from "@/lib/data/settings";
 import { findOrCreateUser } from "@/lib/db/find-or-create-user";
@@ -25,7 +24,7 @@ export async function GET() {
     return apiError("Failed to create user", 500);
   }
 
-  return NextResponse.json(fetchSettings(user));
+  return apiResponse(fetchSettings(user));
 }
 
 export async function PUT(request: Request) {
@@ -66,5 +65,5 @@ export async function PUT(request: Request) {
     { $set: updateFields }
   );
 
-  return NextResponse.json({ success: true });
+  return apiResponse({ success: true });
 }

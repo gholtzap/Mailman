@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { fetchJobs } from "@/lib/data/jobs";
+import { apiResponse } from "@/lib/api/errors";
 
 export async function GET(request: Request) {
   const result = await getAuthenticatedUser();
@@ -18,5 +18,5 @@ export async function GET(request: Request) {
     type: url.searchParams.get("type"),
   });
 
-  return NextResponse.json(data);
+  return apiResponse(data);
 }

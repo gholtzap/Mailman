@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
 import { getRecurringSchedulesCollection, getProcessingJobsCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
@@ -45,7 +44,7 @@ export async function GET(
 
   const total = await jobs.countDocuments({ scheduleId: schedule._id });
 
-  return NextResponse.json({
+  return apiResponse({
     runs,
     pagination: {
       page,

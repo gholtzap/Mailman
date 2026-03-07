@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getRecurringSchedulesCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
@@ -6,6 +5,7 @@ import { scheduleCreateSchema, validateScheduleTiming } from "@/lib/validation/s
 import { apiError } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { fetchSchedules } from "@/lib/data/schedules";
+import { apiResponse } from "@/lib/api/errors";
 
 export async function GET(request: Request) {
   const result = await getAuthenticatedUser();
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     offset: searchParams.has("offset") ? parseInt(searchParams.get("offset")!) : undefined,
   });
 
-  return NextResponse.json(data);
+  return apiResponse(data);
 }
 
 export async function POST(request: Request) {
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
 
     const createdSchedule = await schedules.findOne({ _id: schedule.insertedId });
 
-    return NextResponse.json({ success: true, schedule: createdSchedule });
+    return apiResponse({ success: true, schedule: createdSchedule });
   } catch (error: any) {
     if (error.code === 11000) {
       return apiError("A schedule with this name already exists", 400);

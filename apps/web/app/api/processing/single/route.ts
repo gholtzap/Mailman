@@ -8,7 +8,7 @@ import { migrateApiKeyIfLegacy } from "@/lib/encryption";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { processingSingleSchema } from "@/lib/validation/schemas/processing";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 300;
@@ -54,10 +54,10 @@ export async function POST(request: Request) {
     if (existing) {
       if (existing.status === 'completed') {
         log.info({ processedPaperId: existing._id }, "Paper already completed");
-        return NextResponse.json({ processedPaper: existing });
+        return apiResponse({ processedPaper: existing });
       } else if (existing.status === 'processing') {
         log.info({ processedPaperId: existing._id }, "Paper currently processing");
-        return NextResponse.json({ processedPaper: existing });
+        return apiResponse({ processedPaper: existing });
       }
       log.info({ status: existing.status }, "Paper exists but will be reprocessed");
     }
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
     });
     log.info({ jobId }, "Processing triggered");
 
-    return NextResponse.json({ success: true, jobId: jobId });
+    return apiResponse({ success: true, jobId: jobId });
   } catch (error) {
     log.error({ err: error }, "Single paper processing failed");
     return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));

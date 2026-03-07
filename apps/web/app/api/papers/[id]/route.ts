@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
 import { getProcessedPapersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { fetchPaperDetail } from "@/lib/data/papers";
 
@@ -26,7 +25,7 @@ export async function GET(
     return apiError("Paper not found", 404);
   }
 
-  return NextResponse.json(data);
+  return apiResponse(data);
 }
 
 export async function DELETE(
@@ -53,5 +52,5 @@ export async function DELETE(
     return apiError("Paper not found", 404);
   }
 
-  return NextResponse.json({ success: true });
+  return apiResponse({ success: true });
 }

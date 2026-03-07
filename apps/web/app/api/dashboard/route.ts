@@ -1,7 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 import { createLogger } from "@/lib/logging";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { fetchDashboardData } from "@/lib/data/dashboard";
 import { findOrCreateUser } from "@/lib/db/find-or-create-user";
@@ -34,7 +33,7 @@ export async function GET() {
 
     log.debug("Dashboard data retrieved");
 
-    return NextResponse.json(data);
+    return apiResponse(data);
   } catch (error) {
     log.error({ err: error }, "Dashboard API error");
     return apiError("Internal server error", 500, error instanceof Error ? error.message : "Unknown error");
