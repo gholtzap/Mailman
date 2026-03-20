@@ -82,7 +82,7 @@ export async function sendBatchCompletionEmail({
         arxivId: paper.arxivId,
         source: paper.source,
         summary: abstract,
-        url: `${appUrl}/papers/${pp._id}`,
+        url: `${appUrl}/p/${paper.arxivId}`,
         externalUrl: getExternalPaperUrl(paper.arxivId, paper.source),
       };
     })
