@@ -64,10 +64,17 @@ export async function sendBatchCompletionEmail({
       const paper = await papers.findOne({ _id: pp.paperId });
       if (!paper) return null;
 
-      const abstract = paper.abstract
-        ? paper.abstract.length > 300
-          ? paper.abstract.substring(0, 300).trimEnd() + "..."
-          : paper.abstract
+      const cleanedAbstract = paper.abstract
+        ? paper.abstract.replace(
+            /^(Background|Introduction|Objectives?|Purpose|Aims?|Context|Motivation|Summary)\s*/i,
+            ""
+          )
+        : "";
+
+      const abstract = cleanedAbstract
+        ? cleanedAbstract.length > 300
+          ? cleanedAbstract.substring(0, 300).trimEnd() + "..."
+          : cleanedAbstract
         : "Summary not available";
 
       return {
