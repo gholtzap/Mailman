@@ -6,7 +6,7 @@ import { createLogger } from "@/lib/logging";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { processingBatchSchema } from "@/lib/validation/schemas/processing";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 300;
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     );
     log.info("Batch processing triggered");
 
-    return NextResponse.json({ success: true, jobId: job.insertedId });
+    return apiResponse({ success: true, jobId: job.insertedId });
   } catch (error) {
     log.error({ err: error }, "Batch processing failed");
     return apiError("Internal server error", 500, error instanceof Error ? error.message : String(error));

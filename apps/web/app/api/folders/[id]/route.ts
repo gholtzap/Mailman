@@ -1,10 +1,9 @@
-import { NextResponse } from "next/server";
 import { getFoldersCollection, getProcessedPapersCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { parseRouteParams } from "@/lib/validation/parse-route-params";
 import { folderUpdateSchema } from "@/lib/validation/schemas/folders";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(
@@ -27,7 +26,7 @@ export async function GET(
     return apiError("Folder not found", 404);
   }
 
-  return NextResponse.json({ folder });
+  return apiResponse({ folder });
 }
 
 export async function PUT(
@@ -69,7 +68,7 @@ export async function PUT(
     return apiError("Folder not found", 404);
   }
 
-  return NextResponse.json({ folder: result });
+  return apiResponse({ folder: result });
 }
 
 export async function DELETE(
@@ -100,5 +99,5 @@ export async function DELETE(
 
   await folders.deleteOne({ _id: parsed.id, userId: user._id });
 
-  return NextResponse.json({ success: true });
+  return apiResponse({ success: true });
 }

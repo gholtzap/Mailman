@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
 import { getRecurringSchedulesCollection } from "@/lib/db/collections";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { scheduleCreateSchema, validateScheduleTiming } from "@/lib/validation/schemas/schedules";
 import { apiError } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { fetchSchedules } from "@/lib/data/schedules";
+import { apiResponse } from "@/lib/api/errors";
 
 export async function GET(request: Request) {
   const result = await getAuthenticatedUser();
@@ -15,21 +16,12 @@ export async function GET(request: Request) {
   if (rateLimited) return rateLimited;
 
   const { searchParams } = new URL(request.url);
-  const limit = parseInt(searchParams.get("limit") || "50");
-  const offset = parseInt(searchParams.get("offset") || "0");
+  const data = await fetchSchedules(user, {
+    limit: searchParams.has("limit") ? parseInt(searchParams.get("limit")!) : undefined,
+    offset: searchParams.has("offset") ? parseInt(searchParams.get("offset")!) : undefined,
+  });
 
-  const schedules = await getRecurringSchedulesCollection();
-
-  const userSchedules = await schedules
-    .find({ userId: user._id })
-    .sort({ createdAt: -1 })
-    .skip(offset)
-    .limit(limit)
-    .toArray();
-
-  const total = await schedules.countDocuments({ userId: user._id });
-
-  return NextResponse.json({ schedules: userSchedules, total });
+  return apiResponse(data);
 }
 
 export async function POST(request: Request) {
@@ -115,7 +107,7 @@ export async function POST(request: Request) {
 
     const createdSchedule = await schedules.findOne({ _id: schedule.insertedId });
 
-    return NextResponse.json({ success: true, schedule: createdSchedule });
+    return apiResponse({ success: true, schedule: createdSchedule });
   } catch (error: any) {
     if (error.code === 11000) {
       return apiError("A schedule with this name already exists", 400);

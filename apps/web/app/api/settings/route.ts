@@ -1,10 +1,11 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 import { getUsersCollection } from "@/lib/db/collections";
 import { parseRequestBody } from "@/lib/validation/parse-request";
 import { settingsUpdateSchema } from "@/lib/validation/schemas/settings";
-import { apiError } from "@/lib/api/errors";
+import { apiError, apiResponse } from "@/lib/api/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { fetchSettings } from "@/lib/data/settings";
+import { findOrCreateUser } from "@/lib/db/find-or-create-user";
 
 export async function GET() {
   const { userId } = await auth();
@@ -15,46 +16,15 @@ export async function GET() {
   const rateLimited = await checkRateLimit(userId, "read");
   if (rateLimited) return rateLimited;
 
-  const users = await getUsersCollection();
-  let user = await users.findOne({ clerkId: userId });
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
 
+  const user = await findOrCreateUser(userId, email);
   if (!user) {
-    const clerkUser = await currentUser();
-    const email = clerkUser?.emailAddresses[0]?.emailAddress || "";
-
-    const result = await users.insertOne({
-      clerkId: userId,
-      email,
-      settings: {
-        defaultCategories: ["cs.AI", "cs.LG"],
-        maxPagesPerPaper: 50,
-        papersPerCategory: 5,
-      },
-      usage: {
-        currentMonthPapersProcessed: 0,
-        lastResetDate: new Date(),
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    user = await users.findOne({ _id: result.insertedId });
-    if (!user) {
-      return apiError("Failed to create user", 500);
-    }
+    return apiError("Failed to create user", 500);
   }
 
-  return NextResponse.json({
-    email: user.email || "",
-    settings: {
-      ...user.settings,
-      keywords: user.settings.keywords || [],
-      keywordMatchMode: user.settings.keywordMatchMode || "any",
-    },
-    hasApiKey: !!user.apiKey?.encryptedValue,
-    apiKeyValid: user.apiKey?.isValid ?? false,
-    usage: user.usage,
-  });
+  return apiResponse(fetchSettings(user));
 }
 
 export async function PUT(request: Request) {
@@ -95,5 +65,5 @@ export async function PUT(request: Request) {
     { $set: updateFields }
   );
 
-  return NextResponse.json({ success: true });
+  return apiResponse({ success: true });
 }
