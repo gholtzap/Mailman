@@ -54,12 +54,15 @@ function matchesKeywords(
   return keywordsLower.some((kw) => combinedText.includes(kw));
 }
 
+const MAX_BACKFILL_PAGES = 5;
+
 async function fetchArxivPapers(
   category: string,
   maxResults: number,
+  start: number,
   log: ReturnType<typeof createLogger>
 ): Promise<FetchedPaper[]> {
-  const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
+  const url = `https://export.arxiv.org/api/query?search_query=cat:${category}&start=${start}&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
 
   const response = await fetchWithRetry(
     url,
@@ -166,8 +169,10 @@ export async function processBatchScrape({
     let totalFetched = 0;
     let categoriesSucceeded = 0;
 
-    async function processUpsertedPapers(fetchedPapers: FetchedPaper[]) {
+    async function processUpsertedPapers(fetchedPapers: FetchedPaper[], maxNew: number): Promise<number> {
+      let newQueued = 0;
       for (const paperData of fetchedPapers) {
+        if (newQueued >= maxNew) break;
         if (!matchesKeywords(paperData, keywords, keywordMatchMode)) {
           filteredCount++;
           log.debug({ arxivId: paperData.arxivId }, "Paper filtered out by keywords");
@@ -224,6 +229,7 @@ export async function processBatchScrape({
         }
 
         totalPapersQueued++;
+        newQueued++;
 
         try {
           await processSinglePaper({
@@ -245,6 +251,7 @@ export async function processBatchScrape({
           }
         );
       }
+      return newQueued;
     }
 
     const arxivCategories = categories.filter((c) => !c.startsWith("medrxiv:"));
@@ -257,28 +264,51 @@ export async function processBatchScrape({
       }
       log.info({ category, papersPerCategory }, "Fetching papers for category");
 
-      let fetchedPapers: FetchedPaper[];
-      try {
-        fetchedPapers = await fetchArxivPapers(category, papersPerCategory, log);
-        categoriesSucceeded++;
-      } catch (fetchError) {
-        const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
-        const name = fetchError instanceof Error ? fetchError.name : "Unknown";
-        log.error({ err: fetchError, category, errorName: name, errorMessage: message }, "Failed to fetch papers for category");
-        continue;
+      let categoryNewCount = 0;
+      let categoryFetchSucceeded = false;
+      let categoryFetched = 0;
+
+      for (let page = 0; page < MAX_BACKFILL_PAGES; page++) {
+        if (page > 0) {
+          log.info({ category, page, startIndex: page * papersPerCategory }, "Backfilling: fetching older papers");
+          await delay(3500);
+        }
+
+        let fetchedPapers: FetchedPaper[];
+        try {
+          fetchedPapers = await fetchArxivPapers(category, papersPerCategory, page * papersPerCategory, log);
+          categoryFetchSucceeded = true;
+        } catch (fetchError) {
+          const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
+          const name = fetchError instanceof Error ? fetchError.name : "Unknown";
+          log.error({ err: fetchError, category, errorName: name, errorMessage: message }, "Failed to fetch papers for category");
+          break;
+        }
+
+        if (fetchedPapers.length === 0) break;
+
+        categoryFetched += fetchedPapers.length;
+        totalFetched += fetchedPapers.length;
+
+        const remaining = papersPerCategory - categoryNewCount;
+        const newFromPage = await processUpsertedPapers(fetchedPapers, remaining);
+        categoryNewCount += newFromPage;
+
+        if (categoryNewCount >= papersPerCategory) break;
       }
 
-      totalFetched += fetchedPapers.length;
-      log.info({ category, fetched: fetchedPapers.length }, "Fetched papers from arxiv");
+      if (categoryFetchSucceeded) {
+        categoriesSucceeded++;
+      }
 
-      await processUpsertedPapers(fetchedPapers);
+      log.info({ category, fetched: categoryFetched, newPapers: categoryNewCount }, "Completed fetching for category");
     }
 
     if (medrxivCategoryIds.length > 0) {
       log.info({ categories: medrxivCategoryIds, papersPerCategory }, "Fetching papers from medrxiv");
 
       try {
-        const medrxivPapers = await fetchMedrxivPapers(medrxivCategoryIds, papersPerCategory, log);
+        const medrxivPapers = await fetchMedrxivPapers(medrxivCategoryIds, papersPerCategory * MAX_BACKFILL_PAGES, log);
         totalFetched += medrxivPapers.length;
 
         const medrxivCategoriesWithPapers = new Set(
@@ -290,7 +320,8 @@ export async function processBatchScrape({
 
         log.info({ fetched: medrxivPapers.length, categoriesWithPapers: medrxivCategoriesWithPapers.size }, "Fetched papers from medrxiv");
 
-        await processUpsertedPapers(medrxivPapers);
+        const maxNewMedrxiv = papersPerCategory * medrxivCategoryIds.length;
+        await processUpsertedPapers(medrxivPapers, maxNewMedrxiv);
       } catch (fetchError) {
         const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
         const name = fetchError instanceof Error ? fetchError.name : "Unknown";
