@@ -42,6 +42,8 @@ export async function GET(
       source: paper.source,
       arxivId: paper.arxivId,
     },
-    summary: processedPaper.generatedContent || null,
+    summary: processedPaper.generatedContent && !processedPaper.generatedContent.startsWith("--- Page")
+      ? processedPaper.generatedContent
+      : null,
   });
 }

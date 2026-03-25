@@ -208,64 +208,72 @@ export default function PaperPanel({ paperId, onClose }: PaperPanelProps) {
                 </div>
               )}
 
-              {processedPaper.status === "completed" && (
-                <>
-                  <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-primary)", marginBottom: "16px" }}>
-                    {(["technical", "abstract"] as const).map((tab) => {
-                      const labels = { technical: "Summary", abstract: "Abstract" };
-                      const isActive = activeTab === tab;
-                      return (
-                        <button
-                          key={tab}
-                          onClick={() => setActiveTab(tab)}
-                          style={{
-                            padding: "8px 12px",
-                            fontSize: "13px",
-                            fontWeight: 500,
-                            color: isActive ? "var(--accent)" : "var(--text-secondary)",
-                            background: "transparent",
-                            border: "none",
-                            borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-                            cursor: "pointer",
-                            marginBottom: "-0.5px",
-                            whiteSpace: "nowrap",
-                            transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
-                          }}
-                          onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = "var(--text-primary)"; }}
-                          onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = "var(--text-secondary)"; }}
-                        >
-                          {labels[tab]}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {processedPaper.status === "completed" && (() => {
+                const hasAiSummary = processedPaper.generatedContent
+                  && !processedPaper.generatedContent.startsWith("--- Page");
+                const effectiveTab = hasAiSummary ? activeTab : "abstract";
 
-                  <div style={{ fontSize: "14px", lineHeight: "1.7", color: "var(--text-primary)" }}>
-                    {activeTab === "abstract" ? (
-                      <p style={{ margin: 0 }}>{paper.abstract}</p>
-                    ) : (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          h1: ({node, ...props}: any) => <h1 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", paddingBottom: "8px", borderBottom: "0.5px solid var(--border-primary)" }} {...props} />,
-                          h2: ({node, ...props}: any) => <h2 style={{ fontSize: "16px", fontWeight: 600, marginTop: "18px", marginBottom: "10px" }} {...props} />,
-                          h3: ({node, ...props}: any) => <h3 style={{ fontSize: "14px", fontWeight: 600, marginTop: "14px", marginBottom: "8px" }} {...props} />,
-                          p: ({node, ...props}: any) => <p style={{ marginBottom: "10px" }} {...props} />,
-                          ul: ({node, ...props}: any) => <ul style={{ marginBottom: "10px", paddingLeft: "20px" }} {...props} />,
-                          ol: ({node, ...props}: any) => <ol style={{ marginBottom: "10px", paddingLeft: "20px" }} {...props} />,
-                          li: ({node, ...props}: any) => <li style={{ margin: "4px 0" }} {...props} />,
-                          code: ({node, inline, ...props}: any) => inline
-                            ? <code style={{ fontFamily: "var(--font-geist-mono)", fontSize: "12px", background: "var(--bg-tertiary)", border: "0.5px solid var(--border-primary)", padding: "2px 6px", borderRadius: "3px" }} {...props} />
-                            : <code style={{ fontFamily: "var(--font-geist-mono)", fontSize: "12px" }} {...props} />,
-                          pre: ({node, ...props}: any) => <pre style={{ background: "var(--bg-tertiary)", border: "0.5px solid var(--border-primary)", borderRadius: "6px", padding: "10px", marginBottom: "10px", overflowX: "auto" }} {...props} />,
-                        }}
-                      >
-                        {processedPaper.generatedContent || ""}
-                      </ReactMarkdown>
+                return (
+                  <>
+                    {hasAiSummary && (
+                      <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-primary)", marginBottom: "16px" }}>
+                        {(["technical", "abstract"] as const).map((tab) => {
+                          const labels = { technical: "Summary", abstract: "Abstract" };
+                          const isActive = activeTab === tab;
+                          return (
+                            <button
+                              key={tab}
+                              onClick={() => setActiveTab(tab)}
+                              style={{
+                                padding: "8px 12px",
+                                fontSize: "13px",
+                                fontWeight: 500,
+                                color: isActive ? "var(--accent)" : "var(--text-secondary)",
+                                background: "transparent",
+                                border: "none",
+                                borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
+                                cursor: "pointer",
+                                marginBottom: "-0.5px",
+                                whiteSpace: "nowrap",
+                                transition: "all 150ms cubic-bezier(0.25, 1, 0.5, 1)",
+                              }}
+                              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = "var(--text-primary)"; }}
+                              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = "var(--text-secondary)"; }}
+                            >
+                              {labels[tab]}
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
-                  </div>
-                </>
-              )}
+
+                    <div style={{ fontSize: "14px", lineHeight: "1.7", color: "var(--text-primary)" }}>
+                      {effectiveTab === "abstract" ? (
+                        <p style={{ margin: 0 }}>{paper.abstract}</p>
+                      ) : (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            h1: ({node, ...props}: any) => <h1 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", paddingBottom: "8px", borderBottom: "0.5px solid var(--border-primary)" }} {...props} />,
+                            h2: ({node, ...props}: any) => <h2 style={{ fontSize: "16px", fontWeight: 600, marginTop: "18px", marginBottom: "10px" }} {...props} />,
+                            h3: ({node, ...props}: any) => <h3 style={{ fontSize: "14px", fontWeight: 600, marginTop: "14px", marginBottom: "8px" }} {...props} />,
+                            p: ({node, ...props}: any) => <p style={{ marginBottom: "10px" }} {...props} />,
+                            ul: ({node, ...props}: any) => <ul style={{ marginBottom: "10px", paddingLeft: "20px" }} {...props} />,
+                            ol: ({node, ...props}: any) => <ol style={{ marginBottom: "10px", paddingLeft: "20px" }} {...props} />,
+                            li: ({node, ...props}: any) => <li style={{ margin: "4px 0" }} {...props} />,
+                            code: ({node, inline, ...props}: any) => inline
+                              ? <code style={{ fontFamily: "var(--font-geist-mono)", fontSize: "12px", background: "var(--bg-tertiary)", border: "0.5px solid var(--border-primary)", padding: "2px 6px", borderRadius: "3px" }} {...props} />
+                              : <code style={{ fontFamily: "var(--font-geist-mono)", fontSize: "12px" }} {...props} />,
+                            pre: ({node, ...props}: any) => <pre style={{ background: "var(--bg-tertiary)", border: "0.5px solid var(--border-primary)", borderRadius: "6px", padding: "10px", marginBottom: "10px", overflowX: "auto" }} {...props} />,
+                          }}
+                        >
+                          {processedPaper.generatedContent || ""}
+                        </ReactMarkdown>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </>
           )}
         </div>

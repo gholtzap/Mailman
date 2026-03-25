@@ -41,7 +41,9 @@ export default function PublicPaperPage() {
       }
       const data = await res.json();
       setPaper(data.paper);
-      setSummary(data.summary);
+      const rawSummary = data.summary;
+      const isRawText = rawSummary && rawSummary.startsWith("--- Page");
+      setSummary(isRawText ? null : rawSummary);
       setLoading(false);
     };
     fetchPaper();
@@ -189,16 +191,18 @@ export default function PublicPaperPage() {
           </div>
         </div>
 
-        <div style={{ borderBottom: "0.5px solid var(--border-primary)", marginBottom: "24px" }}>
-          <div className="flex gap-2 overflow-x-auto">
-            <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>
-              Summary
-            </TabButton>
-            <TabButton active={activeTab === "abstract"} onClick={() => setActiveTab("abstract")}>
-              Abstract
-            </TabButton>
+        {summary && (
+          <div style={{ borderBottom: "0.5px solid var(--border-primary)", marginBottom: "24px" }}>
+            <div className="flex gap-2 overflow-x-auto">
+              <TabButton active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>
+                Summary
+              </TabButton>
+              <TabButton active={activeTab === "abstract"} onClick={() => setActiveTab("abstract")}>
+                Abstract
+              </TabButton>
+            </div>
           </div>
-        </div>
+        )}
 
         <div style={{
           background: "var(--bg-secondary)",
@@ -206,7 +210,7 @@ export default function PublicPaperPage() {
           borderRadius: "6px",
           padding: "20px",
         }}>
-          {activeTab === "summary" && summary && (
+          {summary && activeTab === "summary" && (
             <div className="markdown-content" style={{
               fontFamily: "var(--font-geist-sans)",
               fontSize: "14px",
@@ -234,13 +238,7 @@ export default function PublicPaperPage() {
             </div>
           )}
 
-          {activeTab === "summary" && !summary && (
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
-              No summary available for this paper.
-            </p>
-          )}
-
-          {activeTab === "abstract" && (
+          {(!summary || activeTab === "abstract") && (
             <p style={{
               fontFamily: "var(--font-geist-sans)",
               fontSize: "14px",

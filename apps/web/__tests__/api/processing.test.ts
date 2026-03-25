@@ -230,6 +230,127 @@ describe('/api/processing', () => {
       expect(job?.status).toBe('queued')
     })
 
+    it('should reprocess completed paper with raw text when user has API key', async () => {
+      const user = await createTestUser(client)
+      const paper = await createTestPaper(client)
+
+      const db = getTestDb()
+      await db.collection('processed_papers').insertOne({
+        userId: user._id!,
+        paperId: paper._id!,
+        arxivId: paper.arxivId,
+        status: 'completed',
+        generatedContent: '--- Page 1 ---\nRaw PDF text content here\n',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/processing/single', {
+        method: 'POST',
+        body: JSON.stringify({ paperId: paper._id!.toString() }),
+      })
+
+      const response = await PostSingle(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(mockProcessSinglePaper).toHaveBeenCalled()
+    })
+
+    it('should reprocess completed paper with no generatedContent when user has API key', async () => {
+      const user = await createTestUser(client)
+      const paper = await createTestPaper(client)
+
+      const db = getTestDb()
+      await db.collection('processed_papers').insertOne({
+        userId: user._id!,
+        paperId: paper._id!,
+        arxivId: paper.arxivId,
+        status: 'completed',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/processing/single', {
+        method: 'POST',
+        body: JSON.stringify({ paperId: paper._id!.toString() }),
+      })
+
+      const response = await PostSingle(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(mockProcessSinglePaper).toHaveBeenCalled()
+    })
+
+    it('should not reprocess completed paper with raw text when user has no API key', async () => {
+      const user = await createTestUser(client, { apiKey: undefined })
+      const paper = await createTestPaper(client)
+
+      const db = getTestDb()
+      await db.collection('processed_papers').insertOne({
+        userId: user._id!,
+        paperId: paper._id!,
+        arxivId: paper.arxivId,
+        status: 'completed',
+        generatedContent: '--- Page 1 ---\nRaw PDF text content here\n',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/processing/single', {
+        method: 'POST',
+        body: JSON.stringify({ paperId: paper._id!.toString() }),
+      })
+
+      const response = await PostSingle(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.processedPaper).toBeDefined()
+      expect(data.processedPaper.status).toBe('completed')
+      expect(mockProcessSinglePaper).not.toHaveBeenCalled()
+    })
+
+    it('should not reprocess completed paper with raw text when skipAI is requested', async () => {
+      const user = await createTestUser(client)
+      const paper = await createTestPaper(client)
+
+      const db = getTestDb()
+      await db.collection('processed_papers').insertOne({
+        userId: user._id!,
+        paperId: paper._id!,
+        arxivId: paper.arxivId,
+        status: 'completed',
+        generatedContent: '--- Page 1 ---\nRaw PDF text content here\n',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      setMockUserId(user.clerkId)
+
+      const request = new Request('http://localhost/api/processing/single', {
+        method: 'POST',
+        body: JSON.stringify({ paperId: paper._id!.toString(), skipAI: true }),
+      })
+
+      const response = await PostSingle(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.processedPaper).toBeDefined()
+      expect(data.processedPaper.status).toBe('completed')
+      expect(mockProcessSinglePaper).not.toHaveBeenCalled()
+    })
+
     it('should reprocess failed paper', async () => {
       const user = await createTestUser(client)
       const paper = await createTestPaper(client)

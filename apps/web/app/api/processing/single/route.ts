@@ -52,14 +52,23 @@ export async function POST(request: Request) {
     });
 
     if (existing) {
-      if (existing.status === 'completed') {
-        log.info({ processedPaperId: existing._id }, "Paper already completed");
-        return NextResponse.json({ processedPaper: existing });
-      } else if (existing.status === 'processing') {
+      if (existing.status === 'processing') {
         log.info({ processedPaperId: existing._id }, "Paper currently processing");
         return NextResponse.json({ processedPaper: existing });
       }
-      log.info({ status: existing.status }, "Paper exists but will be reprocessed");
+
+      if (existing.status === 'completed') {
+        const hasAiSummary = existing.generatedContent
+          && !existing.generatedContent.startsWith("--- Page");
+        const wantsAI = !skipAIParam && user.apiKey;
+        if (hasAiSummary || !wantsAI) {
+          log.info({ processedPaperId: existing._id }, "Paper already completed");
+          return NextResponse.json({ processedPaper: existing });
+        }
+        log.info({ processedPaperId: existing._id }, "Reprocessing paper with AI summarization");
+      } else {
+        log.info({ status: existing.status }, "Paper exists but will be reprocessed");
+      }
     }
 
     const skipAI = skipAIParam ?? existing?.skipAI ?? false;

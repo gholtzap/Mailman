@@ -34,30 +34,6 @@ async function getPdfPageCount(buffer: Buffer): Promise<number> {
   return pdf.numPages;
 }
 
-async function extractRawText(buffer: Buffer): Promise<string> {
-  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
-  const pdf = await pdfjsLib.getDocument({
-    data: new Uint8Array(buffer),
-    useSystemFonts: true,
-    standardFontDataUrl: undefined,
-    useWorkerFetch: false,
-    isEvalSupported: false,
-  }).promise;
-
-  const pages: string[] = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .join(" ");
-    pages.push(`--- Page ${i} ---\n${pageText}\n`);
-  }
-
-  return pages.join("\n");
-}
-
 export async function processSinglePaper({
   processedPaperId,
   jobId,
@@ -146,22 +122,15 @@ export async function processSinglePaper({
         }
       );
     } else {
-      const rawText = await extractRawText(pdfBuffer);
-
       await processedPapers.updateOne(
         { _id: new ObjectId(processedPaperId) },
         {
           $set: {
             status: "completed",
-            generatedContent: rawText,
-            costs: {
-              opusInputTokens: 0,
-              opusOutputTokens: 0,
-              sonnetInputTokens: 0,
-              sonnetOutputTokens: 0,
-              estimatedCostUsd: 0,
-            },
             updatedAt: new Date(),
+          },
+          $unset: {
+            generatedContent: "",
           },
         }
       );

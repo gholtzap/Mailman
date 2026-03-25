@@ -139,6 +139,45 @@ describe('/api/public/papers/[...arxivId]', () => {
     expect(data.paper.arxivId).toBe('10.1101/2023.01.01.23284123')
   })
 
+  it('should return null summary when generatedContent is raw PDF text', async () => {
+    const user = await createTestUser(client)
+    const paper = await createTestPaper(client)
+    await createTestProcessedPaper(
+      client,
+      user._id!.toString(),
+      paper._id!.toString(),
+      { generatedContent: '--- Page 1 ---\nRaw extracted PDF text here\n\n--- Page 2 ---\nMore text' }
+    )
+
+    const params = Promise.resolve({ arxivId: ['2501.12345'] })
+    const request = new Request('http://localhost/api/public/papers/2501.12345')
+    const response = await GET(request, { params })
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.summary).toBeNull()
+    expect(data.paper.title).toBe('Test Paper: Novel Approach to AI')
+  })
+
+  it('should return null summary when generatedContent is empty', async () => {
+    const user = await createTestUser(client)
+    const paper = await createTestPaper(client)
+    await createTestProcessedPaper(
+      client,
+      user._id!.toString(),
+      paper._id!.toString(),
+      { generatedContent: '' }
+    )
+
+    const params = Promise.resolve({ arxivId: ['2501.12345'] })
+    const request = new Request('http://localhost/api/public/papers/2501.12345')
+    const response = await GET(request, { params })
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.summary).toBeNull()
+  })
+
   it('should return the most recently updated summary when multiple exist', async () => {
     const user1 = await createTestUser(client, { clerkId: 'user_1' })
     const user2 = await createTestUser(client, { clerkId: 'user_2', email: 'user2@test.com' })
