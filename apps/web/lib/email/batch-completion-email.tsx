@@ -41,7 +41,7 @@ export function BatchCompletionEmail({
   return (
     <Html>
       <Head />
-      <Preview>{`${paperCount} paper summary${pluralized} ready from ${scheduleName}`}</Preview>
+      <Preview>{`${paperCount} new paper${pluralized} in ${categories.join(", ")} -- here's what you need to know`}</Preview>
       <Body style={body}>
         <Container style={container}>
           <Section style={headerSection}>
@@ -52,8 +52,8 @@ export function BatchCompletionEmail({
               height="48"
               style={logoImg}
             />
-            <Heading style={h1}>Paper Summaries Ready</Heading>
-            <Text style={subtitle}>{scheduleName}</Text>
+            <Heading style={h1}>Your {scheduleName} Digest</Heading>
+            <Text style={subtitle}>{paperCount} fresh paper{pluralized} just processed</Text>
           </Section>
 
           <Section style={statsBox}>
@@ -125,10 +125,8 @@ ${index + 1}. ${paper.title}
     .join("\n");
 
   return `
-Paper Summaries Ready
-Schedule: ${scheduleName}
-
-Processed ${papers.length} paper${papers.length !== 1 ? "s" : ""} from categories: ${categories.join(", ")}
+Your ${scheduleName} Digest
+${papers.length} fresh paper${papers.length !== 1 ? "s" : ""} in ${categories.join(", ")}
 
 ${papersList}
 

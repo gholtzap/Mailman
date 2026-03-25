@@ -119,10 +119,16 @@ export async function sendBatchCompletionEmail({
     "Sending batch completion email"
   );
 
+  const subject = generateSubjectLine(
+    validPaperSummaries,
+    categoryDisplayNames,
+    scheduleName
+  );
+
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to: notificationEmail,
-    subject: `${validPaperSummaries.length} Paper Summaries Ready - ${scheduleName}`,
+    subject,
     html: htmlEmail,
     text: textEmail,
   });
@@ -137,4 +143,48 @@ export async function sendBatchCompletionEmail({
   );
 
   return { sent: true, paperCount: validPaperSummaries.length };
+}
+
+export function truncateTitle(title: string, maxLen: number): string {
+  if (title.length <= maxLen) return title;
+  const truncated = title.substring(0, maxLen).trimEnd();
+  const lastSpace = truncated.lastIndexOf(" ");
+  return (lastSpace > maxLen * 0.6 ? truncated.substring(0, lastSpace) : truncated) + "...";
+}
+
+const MAX_SUBJECT_LENGTH = 120;
+
+export function generateSubjectLine(
+  papers: { title: string; source?: string }[],
+  categories: string[],
+  scheduleName: string
+): string {
+  const count = papers.length;
+  const categoryList = categories.slice(0, 2).join(" & ");
+
+  if (count === 1) {
+    return `New paper: ${truncateTitle(papers[0].title, MAX_SUBJECT_LENGTH - 12)}`;
+  }
+
+  const countSuffix = ` + ${count - 1} more`;
+  const templates = [
+    () => `${truncateTitle(papers[0].title, MAX_SUBJECT_LENGTH - countSuffix.length)}${countSuffix}`,
+    () => `New in ${categoryList}: ${count} papers just dropped`,
+    () => {
+      const prefix = `Your ${categoryList} digest: `;
+      return `${prefix}${truncateTitle(papers[0].title, MAX_SUBJECT_LENGTH - prefix.length)}`;
+    },
+    () => {
+      const prefix = `${count} fresh papers in ${categoryList} -- `;
+      const titleBudget = MAX_SUBJECT_LENGTH - prefix.length - 2;
+      return `${prefix}"${truncateTitle(papers[0].title, titleBudget)}"`;
+    },
+    () => {
+      const prefix = `Just in from ${categoryList}: `;
+      return `${prefix}${truncateTitle(papers[0].title, MAX_SUBJECT_LENGTH - prefix.length)}`;
+    },
+  ];
+
+  const index = Math.floor(Date.now() / 86400000) % templates.length;
+  return templates[index]();
 }
