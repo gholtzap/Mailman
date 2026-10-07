@@ -141,7 +141,7 @@ describe('Schedule pipeline integration', () => {
       expect.objectContaining({
         from: 'test@example.com',
         to: 'pipeline-test@example.com',
-        subject: expect.stringContaining('Paper Summaries Ready'),
+        subject: 'New paper: Test Paper: Novel Approach to AI',
       })
     )
 
