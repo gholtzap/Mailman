@@ -1,5 +1,7 @@
 # Mailman
 
+> **Inactive project.** I have ended this project and no longer use or maintain it. Do not download or install it for active use. This repository is kept only as an archive.
+
 ## Available arXiv Categories
 
 Run `python3 scrape_arxiv.py --list-categories` to see all 100+ categories, or reference this list:
